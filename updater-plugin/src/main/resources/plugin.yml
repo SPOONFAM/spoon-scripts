@@ -1,0 +1,15 @@
+name: SpoonLoader
+version: 1.0.0
+main: dev.spoonloader.SpoonLoader
+api-version: '1.20'
+depend: [Skript]
+description: Safely syncs a public GitHub Spoon script pack into Skript.
+commands:
+  spoonupdate:
+    description: Download and reload the configured Spoon script pack.
+    usage: /spoonupdate
+    permission: spoonloader.admin
+permissions:
+  spoonloader.admin:
+    description: Allows an operator to update Spoon from GitHub.
+    default: op

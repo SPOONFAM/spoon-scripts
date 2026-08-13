@@ -1,0 +1,261 @@
+# compressor.sk
+# GUI-configured custom currency compressor with a permanent voucher unlock.
+#
+# Install:
+#   1. Put this file in plugins/Skript/scripts/
+#   2. Run: /sk reload compressor
+#   3. As an operator, run: /compressadmin
+#   4. Place one exact sample item in each labeled GUI slot and close it.
+#
+# The GUI saves the complete item: material, name, gradient, lore, model data,
+# enchantments, and other metadata. LuckPerms is used for permission redemption.
+
+options:
+    prefix: &8[&6Compressor&8] &r
+    admin-title: &8Compressor Admin
+    use-permission: compressor.use
+    requested-use-permission: compressor:use
+    compress-interval: 1 second
+
+
+# The saved unlock works immediately. Both permission spellings are accepted.
+function hasCompressor(p: player) returns boolean:
+    if {compressor.unlocked::%uuid of {_p}%} is true:
+        return true
+    if {_p} has permission "{@use-permission}":
+        return true
+    if {_p} has permission "{@requested-use-permission}":
+        return true
+    return false
+
+
+function currencyItemsAreConfigured() returns boolean:
+    if {compressor.item::coin} is not set:
+        return false
+    if {compressor.item::compressed} is not set:
+        return false
+    if {compressor.item::super} is not set:
+        return false
+    return true
+
+
+# Opens the operator configuration chest.
+function openCompressorAdmin(p: player):
+    set {_gui} to a chest inventory with 3 rows named "{@admin-title}"
+
+    loop 27 times:
+        set {_slot} to loop-number - 1
+        set slot {_slot} of {_gui} to gray stained glass pane named " "
+
+    # Labels are directly above their editable input slots.
+    set slot 1 of {_gui} to gold nugget named "&6Coin" with lore "&7Place the exact Coin item" and "&7in the empty slot below."
+    set slot 3 of {_gui} to gold block named "&eCompressed Coin" with lore "&7Place the exact Compressed Coin" and "&7in the empty slot below."
+    set slot 5 of {_gui} to netherite ingot named "&aSuper Compressed Coin" with lore "&7Place the exact Super Coin" and "&7in the empty slot below."
+    set slot 7 of {_gui} to nether star named "&dUnlock Voucher" with lore "&7Place the exact redeemable voucher" and "&7in the empty slot below."
+
+    clear slot 10 of {_gui}
+    clear slot 12 of {_gui}
+    clear slot 14 of {_gui}
+    clear slot 16 of {_gui}
+
+    if {compressor.item::coin} is set:
+        set slot 10 of {_gui} to {compressor.item::coin}
+    if {compressor.item::compressed} is set:
+        set slot 12 of {_gui} to {compressor.item::compressed}
+    if {compressor.item::super} is set:
+        set slot 14 of {_gui} to {compressor.item::super}
+    if {compressor.item::voucher} is set:
+        set slot 16 of {_gui} to {compressor.item::voucher}
+
+    set slot 22 of {_gui} to lime dye named "&a&lSAVE & CLOSE" with lore "&7Click to save all four item types."
+
+    set {compressor.admin.open::%uuid of {_p}%} to true
+    open {_gui} to {_p}
+
+
+# Converts complete recipe amounts and leaves every remainder untouched.
+function compressInventory(p: player):
+    if currencyItemsAreConfigured() is false:
+        return
+
+    set {_coin} to {compressor.item::coin}
+    set {_compressedCoin} to {compressor.item::compressed}
+    set {_superCompressedCoin} to {compressor.item::super}
+
+    # 16 Diamonds -> 32 Coins
+    set {_amount} to amount of plain diamond in {_p}'s inventory
+    if {_amount} >= 16:
+        set {_crafts} to floor({_amount} / 16)
+        set {_used} to {_crafts} * 16
+        set {_reward} to {_crafts} * 32
+        remove {_used} of plain diamond from {_p}'s inventory
+        give {_reward} of {_coin} to {_p}
+
+    # 24 Gold Ingots -> 32 Coins
+    set {_amount} to amount of plain gold ingot in {_p}'s inventory
+    if {_amount} >= 24:
+        set {_crafts} to floor({_amount} / 24)
+        set {_used} to {_crafts} * 24
+        set {_reward} to {_crafts} * 32
+        remove {_used} of plain gold ingot from {_p}'s inventory
+        give {_reward} of {_coin} to {_p}
+
+    # 24 Emeralds -> 32 Coins
+    set {_amount} to amount of plain emerald in {_p}'s inventory
+    if {_amount} >= 24:
+        set {_crafts} to floor({_amount} / 24)
+        set {_used} to {_crafts} * 24
+        set {_reward} to {_crafts} * 32
+        remove {_used} of plain emerald from {_p}'s inventory
+        give {_reward} of {_coin} to {_p}
+
+    # 64 Lapis Lazuli -> 32 Coins
+    set {_amount} to amount of plain lapis lazuli in {_p}'s inventory
+    if {_amount} >= 64:
+        set {_crafts} to floor({_amount} / 64)
+        set {_used} to {_crafts} * 64
+        set {_reward} to {_crafts} * 32
+        remove {_used} of plain lapis lazuli from {_p}'s inventory
+        give {_reward} of {_coin} to {_p}
+
+    # 64 Ancient Debris -> 48 Compressed Coins
+    set {_amount} to amount of plain ancient debris in {_p}'s inventory
+    if {_amount} >= 64:
+        set {_crafts} to floor({_amount} / 64)
+        set {_used} to {_crafts} * 64
+        set {_reward} to {_crafts} * 48
+        remove {_used} of plain ancient debris from {_p}'s inventory
+        give {_reward} of {_compressedCoin} to {_p}
+
+    # 64 configured Coins -> 1 configured Compressed Coin
+    set {_amount} to amount of {_coin} in {_p}'s inventory
+    if {_amount} >= 64:
+        set {_crafts} to floor({_amount} / 64)
+        set {_used} to {_crafts} * 64
+        remove {_used} of {_coin} from {_p}'s inventory
+        give {_crafts} of {_compressedCoin} to {_p}
+
+    # 32 configured Compressed Coins -> 1 configured Super Coin
+    set {_amount} to amount of {_compressedCoin} in {_p}'s inventory
+    if {_amount} >= 32:
+        set {_crafts} to floor({_amount} / 32)
+        set {_used} to {_crafts} * 32
+        remove {_used} of {_compressedCoin} from {_p}'s inventory
+        give {_crafts} of {_superCompressedCoin} to {_p}
+
+
+# Operator-only chest configuration command.
+command /compressadmin:
+    description: Configure the compressor currency and voucher items
+    executable by: players
+    trigger:
+        if player is not an operator:
+            send "{@prefix}&cOnly server operators can use this command." to player
+            stop
+
+        openCompressorAdmin(player)
+        send "{@prefix}&7Place one exact sample into each labeled slot, then save." to player
+        send "{@prefix}&cDo not shift-click; use normal clicks to move the samples." to player
+
+
+# Protects the GUI decorations while leaving the four setting slots editable.
+on inventory click:
+    if {compressor.admin.open::%uuid of player%} is not true:
+        stop
+    if name of player's current inventory is not "{@admin-title}":
+        stop
+
+    # Shift-clicking can choose the wrong input slot, so block it.
+    if inventory action is move to other inventory:
+        cancel event
+        send action bar "&cUse normal clicks to place configuration items." to player
+        stop
+
+    # Double-click collection could pull configured items out unexpectedly.
+    if inventory action is collect items to cursor:
+        cancel event
+        stop
+
+    set {_rawSlot} to raw index of event-slot
+
+    # Normal clicks in the player's lower inventory are allowed.
+    if {_rawSlot} > 26:
+        stop
+
+    # Only these four chest slots accept configuration items.
+    if {_rawSlot} is 10:
+        stop
+    if {_rawSlot} is 12:
+        stop
+    if {_rawSlot} is 14:
+        stop
+    if {_rawSlot} is 16:
+        stop
+
+    cancel event
+
+    if {_rawSlot} is 22:
+        close player's inventory
+
+
+# Dragging is blocked because it can cross protected and editable slots at once.
+on inventory drag:
+    if {compressor.admin.open::%uuid of player%} is true:
+        if name of player's current inventory is "{@admin-title}":
+            cancel event
+            send action bar "&cUse normal clicks to place configuration items." to player
+
+
+# Closing the chest saves exact one-item templates from the four input slots.
+on inventory close:
+    if {compressor.admin.open::%uuid of player%} is not true:
+        stop
+    if name of event-inventory is not "{@admin-title}":
+        stop
+
+    delete {compressor.admin.open::%uuid of player%}
+
+    if slot 10 of event-inventory is air:
+        delete {compressor.item::coin}
+    else:
+        set {_coin} to slot 10 of event-inventory
+        set {_coinAmount} to item amount of {_coin}
+        set item amount of {_coin} to 1
+        set {compressor.item::coin} to {_coin}
+        if {_coinAmount} > 1:
+            set {_extra} to {_coinAmount} - 1
+            give {_extra} of {_coin} to player
+
+    if slot 12 of event-inventory is air:
+        delete {compressor.item::compressed}
+    else:
+        set {_compressed} to slot 12 of event-inventory
+        set {_compressedAmount} to item amount of {_compressed}
+        set item amount of {_compressed} to 1
+        set {compressor.item::compressed} to {_compressed}
+        if {_compressedAmount} > 1:
+            set {_extra} to {_compressedAmount} - 1
+            give {_extra} of {_compressed} to player
+
+    if slot 14 of event-inventory is air:
+        delete {compressor.item::super}
+    else:
+        set {_super} to slot 14 of event-inventory
+        set {_superAmount} to item amount of {_super}
+        set item amount of {_super} to 1
+        set {compressor.item::super} to {_super}
+        if {_superAmount} > 1:
+            set {_extra} to {_superAmount} - 1
+            give {_extra} of {_super} to player
+
+    if slot 16 of event-inventory is air:
+        delete {compressor.item::voucher}
+    else:
+        set {_voucher} to slot 16 of event-inventory
+        set {_voucherAmount} to item amount of {_voucher}
+        set item#õîÚ$z{-®éÜj×ù”$=d€ ˆZ‘/l<?ÎÅÒ»^TÚqr¼­cÄ‘ş”œ ÿTÛ0ÙlGÜ€šáHòåægXİ¶ÉºbmìòˆLºÑíÌÍş÷ô!t»DŸÏ5¹£}`PA3Í9}”Í$<’duü"gˆ¬òŸ'YcYÈA$EO#Öyèçc]€u~êÃÌ±ËgœAªúƒÌ	u,¿	šø&oàZ³nè$ÿ~•_¡—èözˆ}È;ö!wÑyıcà'ãòS}ş{ş
+ïî=ø%¯àT~“}aYÀÄe¿I‰.¯½ ˆ\›äW>8“Õªı%ùs=õRNE.û~ÅÔ6æŒ¨+Ëùë	fNnüÊ½s‹ÙÜíXãVuPØ¿Qåõ—z0ğ|ñfUäá¬ª€•Ãœ¼|ç×J2ğI§hàEYC¿!şóú"óÕW#­?"Q}í¬÷L£œ’ä3Ô{nÒ#vgNL>ÆMçÌj¥@“ÿ(ü¸Š|?Æ¼=EÅä'ıº#ıÀã§İO”ğ/â¼ZqJÏ•ÿ ßa%ªD’ÖÔƒÖ~¤U¸ÓnöÓğ£üå5ùFkñ°óô‡šÃI?]9’%×!ä“[ô>}½b°5Kş€×	szëjI˜ı˜—w—Búü7Ï®lF=;
+™V;cÒ#)ãP¯ÀÀ6äjõC £ÜéPÄ±jV›0é\0W*¯8ég˜Ek£4to$sWÿ"¥=^z‚T+-Ò˜ŞŒÔ÷UË\âªğ:`«¢ú	)qß_v0aÁlé‰RŒ(†	~B\ÃM«ãİ7C“¶q,öp¦’¬à— ¦ê-vX°¸ƒ'ÇM¼g)ÖK©°uöuñ¾‘JH	ÈT\Á'İ¢ò8w/R"|VÌWØW19*rûÊD|›¦DÙT2­dŒ(—¡ …™nÒ–T§DÙ\6®C¼­;B
+*òoGÊ‘kç6U!j¬¨µ¦R‹’àQOmí¡=hj/Ââr2²*.¢R-¤Uî¢9- u<GÕÊ¤–ÈËÑ&i/„6jUië;a×9eŞFINæ“ºú0ùF}å–@êß‡JÛ²b©¶’ªÄ-[4Ö’Xv‡TÖ;È†Ôn©ª:¦."Q¨/úbª|!uRNm©áÎÅ‚Wˆ¹8ŸÜÙp^‡:IìmqumkÖ].Q	k‚’v Í„öğeäox$pMÕ`<Á3j7ìT¡ña»(Ä5×ø Z²-qÊš]qURÒâ^Z>ZQ©ö©‰0_öÚUÜÔÕŒKÕH¦êÃiBˆ¸eZnİm>_*M:Ös«lÆÕŒ	&>×¡wBÓv#ª\ÿd§~PøïÀ”öÌqQF‚>3ç‘S½-İgR#8­FîVzç–«-ëãÍE•ˆiV}ÖÖîµÖ$zšG
+ÙŒäm(Ø?Mm ;Õù/È}@}0« ™ÔÎ{ÙNÅêQËRRÇÜÀı©tı™u¾Îºİo_[ÕM' îKAİo]î·­II}"Û½>Úı±t~Ê¸>­²&™N'éª{ñß8KÖÔÕ{ènô™·XñöwËT'r}ìLV¡¿@³ÖñéEö.óü-A,"Jip  \ğ A,P    Ùp5t            (  Á±Õ¥¸¹åµ±µ@í¿€C{äVİ”©ÔêÉV«P;tñXt¹Á9FğK—|Œ­ÇU»Æ÷¸/¡'bg„“:RË–€¼ä">Û68Ë<ƒ]É/¢º“uzø0í„¡HÀ*ûNÊÅòİ[ÏQ;’ºB½#×‚²İlû©‡$,h‹¨Oa@`X„¤Ñî?”êˆh4Zj|ıs{ãK
+ˆúX|5†Ëk#óÖIv™˜òÙZxßéô|¥æn]İ¶ƒÄÚ#¼p[Á?_ŸãH¨#66NÑL_×rSb¿W!Uƒª)¨QÄA,"_@‡—¬  ø A,( (     t5t            $               5Qµ%9¿û( A,P P     t5tbk…      P             ¬  5Qµ%9½59%MP¹5A,P P    õl5wš[cp  @   (            ¼  ½¹™¥œ¹åµ±A,( (    ¡p5t                         ‘•Ø½A,( (    ¡p5t            @            ” ‘•Ø½ÍÁ½½¹±½…‘•È½A,P P    ¡p5wjdÅ¹T ü  ¸            L ‘•Ø½ÍÁ½½¹±½…‘•È½MÁ½½¹1½…‘•È‘UÁ‘…Ñ•I•ÍÕ±Ğ¹±…ÍÍA,P P    ¡p5vJip  \ğ  „             ‘•Ø½ÍÁ½½¹±½…‘•È½MÁ½½¹1½…‘•È¹±…ÍÍA,P P    Ùp5v_@‡—¬  ø  (             d„ Á±Õ¥¸¹åµ±A,           ğˆ   

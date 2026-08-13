@@ -1,0 +1,7 @@
+# The public GitHub repository containing spoon.sk and spoon_modules/.
+repository: "OWNER/REPOSITORY"
+branch: "main"
+
+# Download the pack and reload it shortly after the server starts.
+update-on-start: true
+

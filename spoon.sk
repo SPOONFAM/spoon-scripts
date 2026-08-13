@@ -1,0 +1,43 @@
+# ================================================================
+# Spoon Script Pack Loader
+# Put this file in: plugins/Skript/scripts/spoon.sk
+# Put pack modules in: plugins/Skript/scripts/spoon_modules/
+#
+# Skript automatically loads every .sk file at server startup.
+# Operators can use /spoon reload after modules are updated.
+# ================================================================
+
+options:
+    spoon-version: 1.0.0
+    spoon-folder: spoon_modules
+    spoon-prefix: &8[&6Spoon&8] &r
+
+command /spoon [<text>]:
+    trigger:
+        if sender is a player:
+            if player is not an operator:
+                send "{@spoon-prefix}&cOnly server operators can use this command."
+                stop
+
+        if arg-1 is not set:
+            send "{@spoon-prefix}&fSpoon loader &7v{@spoon-version}"
+            send "&e/spoon reload &7- reload every Spoon module"
+            send "&e/spoon load &7- load every Spoon module"
+            stop
+
+        if arg-1 is "reload":
+            send "{@spoon-prefix}&eReloading every module..."
+            execute console command "sk reload {@spoon-folder}"
+            send "{@spoon-prefix}&aReload command sent. Check the console for errors."
+            stop
+
+        if arg-1 is "load":
+            send "{@spoon-prefix}&eLoading every module..."
+            execute console command "sk reload {@spoon-folder}"
+            send "{@spoon-prefix}&aLoad command sent. Check the console for errors."
+            stop
+
+        send "{@spoon-prefix}&cUnknown option. Use &e/spoon&c."
+
+on load:
+    send "[Spoon] Loader v{@spoon-version} loaded. Module folder: {@spoon-folder}" to console
