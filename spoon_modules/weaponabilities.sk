@@ -2,6 +2,7 @@
 # Simple weapon abilities for plain Skript.
 #
 # Operator commands:
+#   /weaponability                    (opens the GUI)
 #   /weaponability add lightning 8
 #   /weaponability add fireball 5
 #   /weaponability remove lightning
@@ -13,18 +14,139 @@
 
 options:
     wa-prefix: &8[&bWeapons&8] &r
+    wa-gui-title: &8Weapon Ability Editor
     max-cooldown: 3600
     fireball-speed: 1.5
 
 
-# Operators use this command while holding the weapon they want to edit.
-command /weaponability <text> [<text>] [<number>]:
+# Adds or removes an ability on the item in the player's main hand.
+function waToggleAbility(p: player, ability: text, seconds: number):
+    set {_tool} to tool of {_p}
+    delete {_newLore::*}
+    set {_found} to false
+
+    loop lore of {_tool}:
+        set {_plain} to uncolored loop-value
+        set {_parts::*} to {_plain} split at "|"
+        if {_parts::2} is "WA":
+            if {_parts::3} is {_ability}:
+                set {_found} to true
+            else:
+                add loop-value to {_newLore::*}
+        else:
+            add loop-value to {_newLore::*}
+
+    if {_found} is true:
+        set lore of {_tool} to {_newLore::*}
+        send "{@wa-prefix}&aRemoved the &f%{_ability}% &aability." to {_p}
+    else:
+        if {_ability} is "lightning":
+            add "&6Lightning Strike &7(&e%{_seconds}%s cooldown&7)&0|WA|lightning|%{_seconds}%" to {_newLore::*}
+        else if {_ability} is "fireball":
+            add "&cFireball &7(&e%{_seconds}%s cooldown&7)&0|WA|fireball|%{_seconds}%" to {_newLore::*}
+        set lore of {_tool} to {_newLore::*}
+        send "{@wa-prefix}&aAdded &f%{_ability}% &awith a &f%{_seconds}% second &acooldown." to {_p}
+
+    set tool of {_p} to {_tool}
+
+
+# Removes every weapon ability while preserving normal lore.
+function waClearAbilities(p: player):
+    set {_tool} to tool of {_p}
+    delete {_newLore::*}
+
+    loop lore of {_tool}:
+        set {_plain} to uncolored loop-value
+        set {_parts::*} to {_plain} split at "|"
+        if {_parts::2} is not "WA":
+            add loop-value to {_newLore::*}
+
+    set lore of {_tool} to {_newLore::*}
+    set tool of {_p} to {_tool}
+    send "{@wa-prefix}&aRemoved every ability from the held weapon." to {_p}
+
+
+# Builds the operator chest menu.
+function waOpenGui(p: player):
+    if tool of {_p} is air:
+        send "{@wa-prefix}&cHold the weapon you want to edit." to {_p}
+        stop
+
+    if {weaponability.gui.cooldown::%uuid of {_p}%} is not set:
+        set {weaponability.gui.cooldown::%uuid of {_p}%} to 5
+    set {_selected} to {weaponability.gui.cooldown::%uuid of {_p}%}
+
+    set {_gui} to chest inventory with 3 rows named "{@wa-gui-title}"
+    set {_filler} to gray stained glass pane named " "
+    loop 27 times:
+        set {_slot} to loop-number - 1
+        set slot {_slot} of {_gui} to {_filler}
+
+    set {_help} to book named "&bHow to use"
+    set lore of {_help} to "&7Hold the weapon you want to edit." and "&7Choose a cooldown, then click" and "&7Lightning or Fireball to toggle it."
+    set slot 0 of {_gui} to {_help}
+
+    # The held weapon is only a preview. All menu clicks are cancelled.
+    set slot 4 of {_gui} to tool of {_p}
+
+    set {_cooldowns::*} to 3, 5, 8, 10, 15 and 30
+    set {_cooldownSlots::*} to 10, 11, 12, 14, 15 and 16
+    loop {_cooldowns::*}:
+        set {_button} to clock named "&e%loop-value% seconds"
+        set lore of {_button} to "&7Click to select this cooldown."
+        if loop-value is {_selected}:
+            set name of {_button} to "&a%loop-value% seconds &7(Selected)"
+            set lore of {_button} to "&aThis cooldown is currently selected."
+        set {_buttonSlot} to {_cooldownSlots::%loop-index%}
+        set slot {_buttonSlot} of {_gui} to {_button}
+
+    set {_hasLightning} to false
+    set {_hasFireball} to false
+    loop lore of tool of {_p}:
+        set {_plain} to uncolored loop-value
+        set {_parts::*} to {_plain} split at "|"
+        if {_parts::2} is "WA":
+            if {_parts::3} is "lightning":
+                set {_hasLightning} to true
+            else if {_parts::3} is "fireball":
+                set {_hasFireball} to true
+
+    set {_lightningButton} to lightning rod named "&6Lightning Strike"
+    if {_hasLightning} is true:
+        set lore of {_lightningButton} to "&aCurrently enabled." and "&7Click to remove this ability."
+    else:
+        set lore of {_lightningButton} to "&cCurrently disabled." and "&7Click to add it with a &f%{_selected}%s &7cooldown."
+    set slot 20 of {_gui} to {_lightningButton}
+
+    set {_clearButton} to barrier named "&cClear all abilities"
+    set lore of {_clearButton} to "&7Removes Lightning and Fireball" and "&7without changing the weapon's other lore."
+    set slot 22 of {_gui} to {_clearButton}
+
+    set {_fireballButton} to fire charge named "&cFireball"
+    if {_hasFireball} is true:
+        set lore of {_fireballButton} to "&aCurrently enabled." and "&7Click to remove this ability."
+    else:
+        set lore of {_fireballButton} to "&cCurrently disabled." and "&7Click to add it with a &f%{_selected}%s &7cooldown."
+    set slot 24 of {_gui} to {_fireballButton}
+
+    set {_closeButton} to oak door named "&cClose"
+    set slot 26 of {_gui} to {_closeButton}
+    open {_gui} to {_p}
+
+
+# Running the command with no arguments opens the GUI. The old command forms
+# remain available for console-style editing and backwards compatibility.
+command /weaponability [<text>] [<text>] [<number>]:
     description: Add or remove an ability from the held weapon
     usage: /weaponability <add|remove|clear|info> [lightning|fireball] [cooldown seconds]
     executable by: players
     trigger:
         if player is not an operator:
             send "{@wa-prefix}&cOnly server operators can edit weapon abilities." to player
+            stop
+
+        if arg-1 is not set:
+            waOpenGui(player)
             stop
 
         if player's tool is air:
@@ -58,17 +180,19 @@ command /weaponability <text> [<text>] [<number>]:
             send "{@wa-prefix}&aRemoved every ability from the held weapon." to player
             stop
 
-        if arg-1 is not "add" and arg-1 is not "remove":
-            send "{@wa-prefix}&cUsage: /weaponability <add|remove|clear|info> [ability] [seconds]" to player
-            stop
+        if arg-1 is not "add":
+            if arg-1 is not "remove":
+                send "{@wa-prefix}&cUsage: /weaponability <add|remove|clear|info> [ability] [seconds]" to player
+                stop
 
         if arg-2 is not set:
             send "{@wa-prefix}&cChoose &flightning &cor &ffireball&c." to player
             stop
 
-        if arg-2 is not "lightning" and arg-2 is not "fireball":
-            send "{@wa-prefix}&cUnknown ability. Choose &flightning &cor &ffireball&c." to player
-            stop
+        if arg-2 is not "lightning":
+            if arg-2 is not "fireball":
+                send "{@wa-prefix}&cUnknown ability. Choose &flightning &cor &ffireball&c." to player
+                stop
 
         set {_ability} to arg-2
 
@@ -116,6 +240,81 @@ command /weaponability <text> [<text>] [<number>]:
         set lore of {_tool} to {_newLore::*}
         set player's tool to {_tool}
         send "{@wa-prefix}&aAdded &f%{_ability}% &awith a &f%{_seconds}% second &acooldown." to player
+
+
+# Functional GUI controls. Cancelling every click prevents item duplication.
+on inventory click:
+    if name of player's current inventory is "{@wa-gui-title}":
+        cancel event
+
+        if player is not an operator:
+            close player's inventory
+            stop
+
+        if clicked inventory is not player's current inventory:
+            stop
+
+        set {_slot} to index of event-slot
+
+        if {_slot} is 10:
+            set {weaponability.gui.cooldown::%uuid of player%} to 3
+            wait 1 tick
+            waOpenGui(player)
+            stop
+        if {_slot} is 11:
+            set {weaponability.gui.cooldown::%uuid of player%} to 5
+            wait 1 tick
+            waOpenGui(player)
+            stop
+        if {_slot} is 12:
+            set {weaponability.gui.cooldown::%uuid of player%} to 8
+            wait 1 tick
+            waOpenGui(player)
+            stop
+        if {_slot} is 14:
+            set {weaponability.gui.cooldown::%uuid of player%} to 10
+            wait 1 tick
+            waOpenGui(player)
+            stop
+        if {_slot} is 15:
+            set {weaponability.gui.cooldown::%uuid of player%} to 15
+            wait 1 tick
+            waOpenGui(player)
+            stop
+        if {_slot} is 16:
+            set {weaponability.gui.cooldown::%uuid of player%} to 30
+            wait 1 tick
+            waOpenGui(player)
+            stop
+
+        if player's tool is air:
+            close player's inventory
+            send "{@wa-prefix}&cYour held weapon is no longer available." to player
+            stop
+
+        set {_seconds} to {weaponability.gui.cooldown::%uuid of player%}
+        if {_slot} is 20:
+            waToggleAbility(player, "lightning", {_seconds})
+            wait 1 tick
+            waOpenGui(player)
+            stop
+        if {_slot} is 22:
+            waClearAbilities(player)
+            wait 1 tick
+            waOpenGui(player)
+            stop
+        if {_slot} is 24:
+            waToggleAbility(player, "fireball", {_seconds})
+            wait 1 tick
+            waOpenGui(player)
+            stop
+        if {_slot} is 26:
+            close player's inventory
+
+
+on inventory drag:
+    if name of player's current inventory is "{@wa-gui-title}":
+        cancel event
 
 
 # Lightning Strike activates when the wielder directly damages a living entity.
