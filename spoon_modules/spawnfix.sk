@@ -1,0 +1,82 @@
+# spawnfix.sk
+# Exact server spawn for plain Skript.
+# Stores world, X, Y, Z, yaw, and pitch so Minecraft's safe-spawn search
+# cannot move players above barriers or other blocks.
+#
+# Commands:
+#   /spawnfix set
+#   /spawnfix setcoords <x> <y> <z>
+#   /spawnfix go
+#   /spawnfix info
+
+options:
+    spawnfix-prefix: &8[&aSpawn&8] &r
+
+
+# Operator setup and player teleport command.
+command /spawnfix <text> [<number>] [<number>] [<number>]:
+    description: Set or visit the exact server spawn
+    usage: /spawnfix <set|setcoords|go|info> [x] [y] [z]
+    executable by: players
+    trigger:
+        set {_action} to lowercase arg-1
+
+        if {_action} is "go":
+            if {spawnfix.location} is not set:
+                send "{@spawnfix-prefix}&cThe exact spawn has not been set yet." to player
+                stop
+            teleport player to {spawnfix.location}
+            send "{@spawnfix-prefix}&aTeleported you to spawn." to player
+            stop
+
+        if {_action} is "info":
+            if {spawnfix.location} is not set:
+                send "{@spawnfix-prefix}&cThe exact spawn has not been set yet." to player
+                stop
+            send "{@spawnfix-prefix}&7Exact spawn: &f%{spawnfix.location}%" to player
+            stop
+
+        if player is not an operator:
+            send "{@spawnfix-prefix}&cOnly server operators can change the spawn." to player
+            stop
+
+        if {_action} is "set":
+            set {spawnfix.location} to location of player
+            set the spawn point of player's world to {spawnfix.location}
+            send "{@spawnfix-prefix}&aExact spawn saved where you are standing." to player
+            send "&7Saved world, X, Y, Z, yaw, and pitch." to player
+            stop
+
+        if {_action} is "setcoords":
+            if arg-2 is not set:
+                send "{@spawnfix-prefix}&cUsage: /spawnfix setcoords <x> <y> <z>" to player
+                stop
+            if arg-3 is not set:
+                send "{@spawnfix-prefix}&cUsage: /spawnfix setcoords <x> <y> <z>" to player
+                stop
+            if arg-4 is not set:
+                send "{@spawnfix-prefix}&cUsage: /spawnfix setcoords <x> <y> <z>" to player
+                stop
+
+            set {_spawn} to location(arg-2, arg-3, arg-4, world of player, yaw of player, pitch of player)
+            set {spawnfix.location} to {_spawn}
+            set the spawn point of player's world to {_spawn}
+            send "{@spawnfix-prefix}&aExact spawn saved at &f%arg-2%, %arg-3%, %arg-4%&a." to player
+            send "&7World: &f%world of player% &8| &7Direction copied from where you are facing." to player
+            stop
+
+        send "{@spawnfix-prefix}&cUsage: /spawnfix <set|setcoords|go|info> [x] [y] [z]" to player
+
+
+# New players are moved after the normal join process so the stored Y level wins.
+on first join:
+    if {spawnfix.location} is set:
+        wait 2 ticks
+        teleport player to {spawnfix.location}
+
+
+# Changing the event's respawn location avoids Minecraft's safe-location scan.
+# This intentionally overrides beds and respawn anchors.
+on respawn:
+    if {spawnfix.location} is set:
+        set respawn location to {spawnfix.location}
