@@ -11,15 +11,15 @@
 #   /hearts reset <player>               - Remove a user's extra hearts
 #   /permanentheart [player] [amount]   - Give copies of that item
 #
-# One Minecraft heart is 2 health points. Players always keep their normal
-# 10 hearts; /withdraw can remove only hearts earned through this script.
+# Skript's health expressions use whole hearts, so a normal player has a
+# maximum health of 10. /withdraw can remove only hearts earned here.
 
 options:
     ph-prefix: &8[&cHearts&8] &r
     ph-item-name: &c&lPermanent Heart
     ph-admin-title: &8Permanent Heart Admin
     ph-max-extra-hearts: 8
-    ph-normal-health: 20
+    ph-normal-health: 10
 
 
 # Returns the admin-configured item, or the default item before setup.
@@ -61,7 +61,7 @@ function applyPermanentHearts(p: player):
     if {permanenthearts.extra::%{_id}%} is not set:
         set {permanenthearts.extra::%{_id}%} to 0
 
-    set {_maximum} to {@ph-normal-health} + ({permanenthearts.extra::%{_id}%} * 2)
+    set {_maximum} to {@ph-normal-health} + {permanenthearts.extra::%{_id}%}
     set max health of {_p} to {_maximum}
     if health of {_p} > {_maximum}:
         set health of {_p} to {_maximum}
@@ -287,7 +287,7 @@ on right click:
     add 1 to {permanenthearts.extra::%{_id}%}
     applyPermanentHearts(player)
 
-    set {_newHealth} to health of player + 2
+    set {_newHealth} to health of player + 1
     if {_newHealth} > max health of player:
         set {_newHealth} to max health of player
     set health of player to {_newHealth}
