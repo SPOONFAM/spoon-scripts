@@ -118,13 +118,9 @@ function seRegionReady() returns boolean:
 
 # Vanilla's uniform fortune bonus: level 3 can yield 1, 1, 2, 3, or 4.
 function seFortuneDrop(level: number) returns number:
-    set {_maximumRoll} to {_level} + 1
-    set {_bonus} to random integer between 0 and {_maximumRoll}
-    remove 1 from {_bonus}
-    if {_bonus} < 0:
-        set {_bonus} to 0
-    set {_drops} to {_bonus} + 1
-    return {_drops}
+    # Fortune-style result: level 1 = 1-2, level 3 = 1-4, etc.
+    set {_maximum} to {_level} + 1
+    return random integer between 1 and {_maximum}
 
 
 # Breaks a square centered on the mined block. Looking up/down uses X/Z;
@@ -189,6 +185,11 @@ function seBreakRedWoolArea(p: player, center: location, level: number, radius: 
 
 # Operator GUI for creating the actual enchanted item.
 function seOpenGui(p: player):
+    if seRegionReady() is false:
+        set {specialenchant.region.pos1} to location(170, 115, -91, world of {_p})
+        set {specialenchant.region.pos2} to location(167, 117, -88, world of {_p})
+        send "{@se-prefix}&eDefault red-wool region enabled: &f170 115 -91 &ethrough &f167 117 -88&e." to {_p}
+
     set {_gui} to a chest inventory with 3 rows named "&8Special Enchantments"
     set {_filler} to gray stained glass pane named " "
     loop 27 times:
@@ -481,6 +482,7 @@ on break of red wool:
     if {_broken} > 0:
         damage tool of player by 1
         play sound "block.wool.break" with volume 1 and pitch 1.2 to player
+        send action bar "&dShear Fortune &7broke &f%{_broken}% &7red wool block(s)." to player
 
 
 on load:
