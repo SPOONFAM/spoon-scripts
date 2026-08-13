@@ -1,0 +1,136 @@
+# customscoreboard.sk
+# Requires SkBee for the sidebar scoreboard expressions.
+#
+# Operator commands:
+#   /csb on
+#   /csb off
+#   /csb status
+#
+# Playtime is stored in seconds and survives restarts. Deaths count player
+# deaths. Kills count only kills where a player killed another player.
+
+options:
+    csb-prefix: &8[&bCSB&8] &r
+    csb-title: &b&lSERVER STATS
+
+
+function csbFormatTime(seconds: number) returns text:
+    set {_remaining} to {_seconds}
+    set {_days} to rounded down ({_remaining} / 86400)
+    remove ({_days} * 86400) from {_remaining}
+    set {_hours} to rounded down ({_remaining} / 3600)
+    remove ({_hours} * 3600) from {_remaining}
+    set {_minutes} to rounded down ({_remaining} / 60)
+    remove ({_minutes} * 60) from {_remaining}
+
+    if {_days} > 0:
+        return "%{_days}%d %{_hours}%h"
+    if {_hours} > 0:
+        return "%{_hours}%h %{_minutes}%m"
+    if {_minutes} > 0:
+        return "%{_minutes}%m %{_remaining}%s"
+    return "%{_remaining}%s"
+
+
+function csbUpdate(p: player):
+    if {csb.enabled} is not true:
+        stop
+
+    set {_id} to uuid of {_p}
+    if {csb.playtime::%{_id}%} is not set:
+        set {csb.playtime::%{_id}%} to 0
+    if {csb.deaths::%{_id}%} is not set:
+        set {csb.deaths::%{_id}%} to 0
+    if {csb.kills::%{_id}%} is not set:
+        set {csb.kills::%{_id}%} to 0
+
+    set {_time} to csbFormatTime({csb.playtime::%{_id}%})
+    set {_deaths} to {csb.deaths::%{_id}%}
+    set {_kills} to {csb.kills::%{_id}%}
+
+    wipe {_p}'s sidebar
+    set name of sidebar of {_p} to "{@csb-title}"
+    set score "&7&l%{_p}%" in sidebar of {_p} to 7
+    set score "&8&m----------------" in sidebar of {_p} to 6
+    set score "&ePlaytime" in sidebar of {_p} to 5
+    set score "&f%{_time}%" in sidebar of {_p} to 4
+    set score "&cDeaths: &f%{_deaths}%" in sidebar of {_p} to 3
+    set score "&aPlayer Kills: &f%{_kills}%" in sidebar of {_p} to 2
+    set score "&8&m-----------------" in sidebar of {_p} to 1
+
+
+command /csb [<text>]:
+    aliases: /customscoreboard
+    description: Toggle the custom statistics scoreboard
+    executable by: players
+    trigger:
+        if player is not an operator:
+            send "{@csb-prefix}&cOnly server operators can use this command." to player
+            stop
+
+        if arg-1 is "on":
+            set {csb.enabled} to true
+            loop all players:
+                csbUpdate(loop-player)
+            send "{@csb-prefix}&aCustom scoreboard enabled for everyone." to player
+            stop
+
+        if arg-1 is "off":
+            set {csb.enabled} to false
+            loop all players:
+                wipe loop-player's sidebar
+            send "{@csb-prefix}&cCustom scoreboard disabled." to player
+            stop
+
+        if arg-1 is "status":
+            if {csb.enabled} is true:
+                send "{@csb-prefix}&7Status: &aON" to player
+            else:
+                send "{@csb-prefix}&7Status: &cOFF" to player
+            stop
+
+        send "{@csb-prefix}&e/csb on &7- show it to everyone" to player
+        send "{@csb-prefix}&e/csb off &7- hide it from everyone" to player
+        send "{@csb-prefix}&e/csb status &7- check the current status" to player
+
+
+# Count online time once per second and refresh the sidebar at the same pace.
+every 1 second:
+    loop all players:
+        set {_id} to uuid of loop-player
+        add 1 to {csb.playtime::%{_id}%}
+        if {csb.enabled} is true:
+            csbUpdate(loop-player)
+
+
+on join:
+    set {_id} to uuid of player
+    if {csb.playtime::%{_id}%} is not set:
+        set {csb.playtime::%{_id}%} to 0
+    if {csb.deaths::%{_id}%} is not set:
+        set {csb.deaths::%{_id}%} to 0
+    if {csb.kills::%{_id}%} is not set:
+        set {csb.kills::%{_id}%} to 0
+    wait 2 ticks
+    csbUpdate(player)
+
+
+on death of player:
+    set {_victimId} to uuid of victim
+    add 1 to {csb.deaths::%{_victimId}%}
+
+    if attacker is a player:
+        set {_killerId} to uuid of attacker
+        add 1 to {csb.kills::%{_killerId}%}
+
+    if {csb.enabled} is true:
+        wait 1 tick
+        csbUpdate(victim)
+        if attacker is a player:
+            csbUpdate(attacker)
+
+
+on load:
+    if {csb.enabled} is not set:
+        set {csb.enabled} to false
+    send "[CSB] Custom scoreboard loaded. Status: %{csb.enabled}%" to console
