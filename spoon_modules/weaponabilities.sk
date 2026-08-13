@@ -1,0 +1,183 @@
+# weaponabilities.sk
+# Simple weapon abilities for plain Skript.
+#
+# Operator commands:
+#   /weaponability add lightning 8
+#   /weaponability add fireball 5
+#   /weaponability remove lightning
+#   /weaponability clear
+#   /weaponability info
+#
+# Hold the weapon while running a command. A weapon can have both abilities.
+# Cooldowns are measured in seconds and are tracked per player and ability.
+
+options:
+    wa-prefix: &8[&bWeapons&8] &r
+    max-cooldown: 3600
+    fireball-speed: 1.5
+
+
+# Operators use this command while holding the weapon they want to edit.
+command /weaponability <text> [<text>] [<number>]:
+    description: Add or remove an ability from the held weapon
+    usage: /weaponability <add|remove|clear|info> [lightning|fireball] [cooldown seconds]
+    executable by: players
+    trigger:
+        if player is not an operator:
+            send "{@wa-prefix}&cOnly server operators can edit weapon abilities." to player
+            stop
+
+        if player's tool is air:
+            send "{@wa-prefix}&cHold the weapon you want to edit." to player
+            stop
+
+        set {_tool} to player's tool
+
+        if arg-1 is "info":
+            set {_found} to false
+            send "{@wa-prefix}&fAbilities on &e%name of {_tool}%&f:" to player
+            loop lore of {_tool}:
+                set {_plain} to uncolored loop-value
+                set {_parts::*} to {_plain} split at "|"
+                if {_parts::2} is "WA":
+                    set {_found} to true
+                    send "&8- &b%{_parts::3}% &7(%{_parts::4}%s cooldown)" to player
+            if {_found} is false:
+                send "&8- &7None" to player
+            stop
+
+        if arg-1 is "clear":
+            delete {_newLore::*}
+            loop lore of {_tool}:
+                set {_plain} to uncolored loop-value
+                set {_parts::*} to {_plain} split at "|"
+                if {_parts::2} is not "WA":
+                    add loop-value to {_newLore::*}
+            set lore of {_tool} to {_newLore::*}
+            set player's tool to {_tool}
+            send "{@wa-prefix}&aRemoved every ability from the held weapon." to player
+            stop
+
+        if arg-1 is not "add" and arg-1 is not "remove":
+            send "{@wa-prefix}&cUsage: /weaponability <add|remove|clear|info> [ability] [seconds]" to player
+            stop
+
+        if arg-2 is not set:
+            send "{@wa-prefix}&cChoose &flightning &cor &ffireball&c." to player
+            stop
+
+        if arg-2 is not "lightning" and arg-2 is not "fireball":
+            send "{@wa-prefix}&cUnknown ability. Choose &flightning &cor &ffireball&c." to player
+            stop
+
+        set {_ability} to arg-2
+
+        # Rebuild the lore without an older copy of the selected ability.
+        delete {_newLore::*}
+        set {_removed} to false
+        loop lore of {_tool}:
+            set {_plain} to uncolored loop-value
+            set {_parts::*} to {_plain} split at "|"
+            if {_parts::2} is "WA":
+                if {_parts::3} is {_ability}:
+                    set {_removed} to true
+                else:
+                    add loop-value to {_newLore::*}
+            else:
+                add loop-value to {_newLore::*}
+
+        if arg-1 is "remove":
+            set lore of {_tool} to {_newLore::*}
+            set player's tool to {_tool}
+            if {_removed} is true:
+                send "{@wa-prefix}&aRemoved the &f%{_ability}% &aability." to player
+            else:
+                send "{@wa-prefix}&eThat weapon did not have the &f%{_ability}% &eability." to player
+            stop
+
+        if arg-3 is not set:
+            send "{@wa-prefix}&cEnter the cooldown in seconds." to player
+            send "&7Example: &f/weaponability add %{_ability}% 8" to player
+            stop
+
+        set {_seconds} to arg-3
+        if {_seconds} < 1:
+            send "{@wa-prefix}&cThe cooldown must be at least 1 second." to player
+            stop
+        if {_seconds} > {@max-cooldown}:
+            send "{@wa-prefix}&cThe cooldown cannot exceed {@max-cooldown} seconds." to player
+            stop
+
+        if {_ability} is "lightning":
+            add "&6Lightning Strike &7(&e%{_seconds}%s cooldown&7)&0|WA|lightning|%{_seconds}%" to {_newLore::*}
+        else if {_ability} is "fireball":
+            add "&cFireball &7(&e%{_seconds}%s cooldown&7)&0|WA|fireball|%{_seconds}%" to {_newLore::*}
+
+        set lore of {_tool} to {_newLore::*}
+        set player's tool to {_tool}
+        send "{@wa-prefix}&aAdded &f%{_ability}% &awith a &f%{_seconds}% second &acooldown." to player
+
+
+# Lightning Strike activates when the wielder directly damages a living entity.
+on damage:
+    if event is cancelled:
+        stop
+    if attacker is not a player:
+        stop
+    if victim is not a living entity:
+        stop
+    if attacker's tool is air:
+        stop
+
+    delete {_cooldown}
+    loop lore of attacker's tool:
+        set {_plain} to uncolored loop-value
+        set {_parts::*} to {_plain} split at "|"
+        if {_parts::2} is "WA":
+            if {_parts::3} is "lightning":
+                set {_cooldown} to {_parts::4} parsed as number
+
+    if {_cooldown} is not set:
+        stop
+
+    set {_now} to unix timestamp of now
+    if {weaponability.cooldown::%uuid of attacker%::lightning} is set:
+        if {weaponability.cooldown::%uuid of attacker%::lightning} > {_now}:
+            set {_remaining} to ceil({weaponability.cooldown::%uuid of attacker%::lightning} - {_now})
+            send action bar "&6Lightning Strike &cis recharging for &f%{_remaining}%s&c." to attacker
+            stop
+
+    set {weaponability.cooldown::%uuid of attacker%::lightning} to {_now} + {_cooldown}
+    strike lightning at victim
+    send action bar "&6Lightning Strike activated!" to attacker
+
+
+# Fireball activates when the wielder right-clicks with the weapon.
+on right click:
+    if event is cancelled:
+        stop
+    if player's tool is air:
+        stop
+
+    delete {_cooldown}
+    loop lore of player's tool:
+        set {_plain} to uncolored loop-value
+        set {_parts::*} to {_plain} split at "|"
+        if {_parts::2} is "WA":
+            if {_parts::3} is "fireball":
+                set {_cooldown} to {_parts::4} parsed as number
+
+    if {_cooldown} is not set:
+        stop
+
+    set {_now} to unix timestamp of now
+    if {weaponability.cooldown::%uuid of player%::fireball} is set:
+        if {weaponability.cooldown::%uuid of player%::fireball} > {_now}:
+            set {_remaining} to ceil({weaponability.cooldown::%uuid of player%::fireball} - {_now})
+            send action bar "&cFireball is recharging for &f%{_remaining}%s&c." to player
+            stop
+
+    cancel event
+    set {weaponability.cooldown::%uuid of player%::fireball} to {_now} + {_cooldown}
+    shoot a fireball from player at speed {@fireball-speed}
+    send action bar "&cFireball launched!" to player
