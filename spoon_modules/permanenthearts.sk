@@ -261,7 +261,13 @@ command /withdraw [<integer>]:
 
 # Redeems one valid heart on right-click.
 on right click:
-    set {_heartItem} to permanentHeartItem(1)
+    if player's tool is air:
+        stop
+
+    # Match the saved heart against the held stack at the same amount.
+    # This preserves exact item-data checking while allowing stacks of 2-64.
+    set {_heldAmount} to item amount of player's tool
+    set {_heartItem} to permanentHeartItem({_heldAmount})
     if player's tool is not {_heartItem}:
         stop
 
@@ -276,7 +282,6 @@ on right click:
 
     # Remove exactly one item from the hand that triggered the event.
     set {_held} to player's tool
-    set {_heldAmount} to amount of {_held}
     if {_heldAmount} <= 1:
         set player's tool to air
     else:
