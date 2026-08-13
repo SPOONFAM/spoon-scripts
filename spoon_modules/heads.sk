@@ -1,0 +1,242 @@
+# heads.sk
+# Self-contained local head library for plain Skript.
+# No website, API, config file, Java helper, or Skript addon is required.
+#
+# Player commands:
+#   /heads
+#   /heads <search>
+#
+# Operator commands:
+#   /headsadmin add <name>     (saves one copy of the held player head)
+#   /headsadmin remove <name>
+#   /headsadmin list
+#
+# Saved heads are kept in normal Skript variables and survive restarts.
+
+options:
+    heads-prefix: &8[&bHeads&8] &r
+    heads-title: &8Head Library
+    heads-per-page: 45
+
+
+# Opens a searchable, paged copy of the locally saved head library.
+function openHeadLibrary(p: player, query: text, requestedPage: number):
+    set {_uuid} to uuid of {_p}
+    set {_queryLower} to lowercase {_query}
+    set {_matches} to 0
+
+    loop {heads.library.names::*}:
+        set {_savedName} to loop-value
+        set {_savedNameLower} to lowercase {_savedName}
+        if {_query} is "":
+            add 1 to {_matches}
+        else if {_savedNameLower} contains {_queryLower}:
+            add 1 to {_matches}
+
+    if {_matches} is 0:
+        if {_query} is "":
+            send "{@heads-prefix}&eThe head library is empty." to {_p}
+            send "&7An operator can add one with &f/headsadmin add <name>&7." to {_p}
+        else:
+            send "{@heads-prefix}&eNo saved heads matched &f%{_query}%&e." to {_p}
+        stop
+
+    set {_pageCount} to ceil({_matches} / {@heads-per-page})
+    set {_page} to floor({_requestedPage})
+    if {_page} < 1:
+        set {_page} to 1
+    if {_page} > {_pageCount}:
+        set {_page} to {_pageCount}
+
+    set {_firstResult} to ({_page} - 1) * {@heads-per-page} + 1
+    set {_lastResult} to {_page} * {@heads-per-page}
+    set {_seen} to 0
+    set {_slot} to 0
+
+    delete {heads.gui::%{_uuid}%::slots::*}
+    set {heads.gui::%{_uuid}%::query} to {_query}
+    set {heads.gui::%{_uuid}%::page} to {_page}
+
+    set {_gui} to chest inventory with 6 rows named "{@heads-title}"
+
+    loop {heads.library.names::*}:
+        set {_key} to loop-index
+        set {_savedName} to loop-value
+        set {_savedNameLower} to lowercase {_savedName}
+        set {_matchesSearch} to false
+
+        if {_query} is "":
+            set {_matchesSearch} to true
+        else if {_savedNameLower} contains {_queryLower}:
+            set {_matchesSearch} to true
+
+        if {_matchesSearch} is true:
+            add 1 to {_seen}
+            if {_seen} >= {_firstResult}:
+                if {_seen} <= {_lastResult}:
+                    set {_icon} to {heads.library.items::%{_key}%}
+                    if {_icon} is set:
+                        set amount of {_icon} to 1
+                        set name of {_icon} to "&b%{_savedName}%"
+                        set slot {_slot} of {_gui} to {_icon}
+                        set {heads.gui::%{_uuid}%::slots::%{_slot}%} to {_key}
+                        add 1 to {_slot}
+
+    if {_page} > 1:
+        set {_previous} to arrow named "&ePrevious page"
+        set lore of {_previous} to "&7Go to page %{_page} - 1%."
+        set slot 45 of {_gui} to {_previous}
+
+    set {_close} to barrier named "&cClose"
+    set slot 48 of {_gui} to {_close}
+
+    set {_information} to book named "&bLocal Head Library"
+    if {_query} is "":
+        set {_shownSearch} to "All heads"
+    else:
+        set {_shownSearch} to {_query}
+    set lore of {_information} to "&7Search: &f%{_shownSearch}%" and "&7Results: &f%{_matches}%" and "&7Page: &f%{_page}%/%{_pageCount}%" and "&8Click a head to receive a copy."
+    set slot 49 of {_gui} to {_information}
+
+    if {_page} < {_pageCount}:
+        set {_next} to arrow named "&eNext page"
+        set lore of {_next} to "&7Go to page %{_page} + 1%."
+        set slot 53 of {_gui} to {_next}
+
+    open {_gui} to {_p}
+
+
+# Everyone can browse and receive copies of saved heads.
+command /heads [<text>]:
+    description: Browse or search the local head library
+    usage: /heads [search]
+    executable by: players
+    trigger:
+        if arg-1 is set:
+            if length of arg-1 > 40:
+                send "{@heads-prefix}&cSearches cannot exceed 40 characters." to player
+                stop
+            openHeadLibrary(player, arg-1, 1)
+        else:
+            openHeadLibrary(player, "", 1)
+
+
+# Operators build the library by holding the exact player head they want saved.
+command /headsadmin <text> [<text>]:
+    description: Add, remove, or list locally saved heads
+    usage: /headsadmin <add|remove|list> [name]
+    executable by: players
+    trigger:
+        if player is not an operator:
+            send "{@heads-prefix}&cOnly server operators can edit the head library." to player
+            stop
+
+        set {_action} to lowercase arg-1
+
+        if {_action} is "list":
+            set {_count} to size of {heads.library.names::*}
+            if {_count} is 0:
+                send "{@heads-prefix}&eThe head library is empty." to player
+                stop
+            send "{@heads-prefix}&fSaved heads &7(%{_count}%&7):" to player
+            loop {heads.library.names::*}:
+                send "&8- &b%loop-value%" to player
+            stop
+
+        if {_action} is not "add":
+            if {_action} is not "remove":
+                send "{@heads-prefix}&cUsage: /headsadmin <add|remove|list> [name]" to player
+                stop
+
+        if arg-2 is not set:
+            send "{@heads-prefix}&cEnter a name for the head." to player
+            stop
+
+        set {_savedName} to arg-2
+        if length of {_savedName} > 40:
+            send "{@heads-prefix}&cHead names cannot exceed 40 characters." to player
+            stop
+        if {_savedName} contains "::":
+            send "{@heads-prefix}&cHead names cannot contain two colons together." to player
+            stop
+        set {_key} to lowercase {_savedName}
+
+        if {_action} is "remove":
+            if {heads.library.items::%{_key}%} is not set:
+                send "{@heads-prefix}&eThere is no saved head named &f%{_savedName}%&e." to player
+                stop
+            delete {heads.library.items::%{_key}%}
+            delete {heads.library.names::%{_key}%}
+            send "{@heads-prefix}&aRemoved &f%{_savedName}% &afrom the library." to player
+            stop
+
+        if player's tool is not a player head:
+            send "{@heads-prefix}&cHold the exact player head you want to save." to player
+            stop
+
+        set {_head} to player's tool
+        set amount of {_head} to 1
+        set {heads.library.items::%{_key}%} to {_head}
+        set {heads.library.names::%{_key}%} to {_savedName}
+        send "{@heads-prefix}&aSaved the held head as &f%{_savedName}%&a." to player
+        send "&7Players can find it with &f/heads %{_savedName}%&7." to player
+
+
+# The browser is read-only, which prevents moving or duplicating menu icons.
+on inventory click:
+    if name of player's current inventory is not "{@heads-title}":
+        stop
+
+    cancel event
+    if clicked inventory is not player's current inventory:
+        stop
+
+    set {_slot} to raw index of event-slot
+    set {_uuid} to uuid of player
+
+    if {_slot} is 45:
+        set {_page} to {heads.gui::%{_uuid}%::page}
+        if {_page} > 1:
+            remove 1 from {_page}
+            set {_query} to {heads.gui::%{_uuid}%::query}
+            wait 1 tick
+            openHeadLibrary(player, {_query}, {_page})
+        stop
+
+    if {_slot} is 48:
+        close player's inventory
+        stop
+
+    if {_slot} is 53:
+        set {_page} to {heads.gui::%{_uuid}%::page}
+        add 1 to {_page}
+        set {_query} to {heads.gui::%{_uuid}%::query}
+        wait 1 tick
+        openHeadLibrary(player, {_query}, {_page})
+        stop
+
+    if {_slot} < 0:
+        stop
+    if {_slot} > 44:
+        stop
+
+    set {_key} to {heads.gui::%{_uuid}%::slots::%{_slot}%}
+    if {_key} is not set:
+        stop
+    if {heads.library.items::%{_key}%} is not set:
+        send "{@heads-prefix}&cThat saved head no longer exists." to player
+        stop
+
+    set {_head} to {heads.library.items::%{_key}%}
+    set amount of {_head} to 1
+    give {_head} to player
+    send action bar "&aYou received &f%{heads.library.names::%{_key}%}%&a." to player
+
+
+on inventory drag:
+    if name of player's current inventory is "{@heads-title}":
+        cancel event
+
+
+on quit:
+    delete {heads.gui::%uuid of player%::*}
