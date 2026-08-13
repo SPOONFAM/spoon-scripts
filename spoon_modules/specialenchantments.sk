@@ -8,6 +8,7 @@
 # - Every candidate block is checked against the region before it is removed.
 #
 # Operator commands:
+#   /specialenchant                    (opens the operator GUI)
 #   /specialenchant add shearfortune <level>
 #   /specialenchant remove shearfortune
 #   /specialenchant info
@@ -62,8 +63,8 @@ function seFortuneLevel(i: item) returns number:
 
 
 # Adds or replaces Shear Fortune without removing the item's normal lore.
-function seAddShearFortune(p: player, level: number):
-    set {_tool} to tool of {_p}
+function seApplyShearFortune(i: item, level: number) returns item:
+    set {_tool} to {_i}
     delete {_newLore::*}
 
     loop lore of {_tool}:
@@ -77,6 +78,11 @@ function seAddShearFortune(p: player, level: number):
     set {_roman} to seRoman({_level})
     add "&dShear Fortune %{_roman}% &7(Red Wool)&0|SE|shearfortune|%{_level}%" to {_newLore::*}
     set lore of {_tool} to {_newLore::*}
+    return {_tool}
+
+
+function seAddShearFortune(p: player, level: number):
+    set {_tool} to seApplyShearFortune(tool of {_p}, {_level})
     set tool of {_p} to {_tool}
 
 
@@ -181,6 +187,140 @@ function seBreakRedWoolArea(p: player, center: location, level: number, radius: 
     return {_broken}
 
 
+# Operator GUI for creating the actual enchanted item.
+function seOpenGui(p: player):
+    set {_gui} to a chest inventory with 3 rows named "&8Special Enchantments"
+    set {_filler} to gray stained glass pane named " "
+    loop 27 times:
+        set slot (loop-number - 1) of {_gui} to {_filler}
+
+    set slot 4 of {_gui} to book named "&d&lShear Fortune" with lore "&7Place shears in the middle slot." and "&7Choose a level, then click Apply." and "&7Only red wool is affected." and "&7The configured region remains enforced."
+    set slot 13 of {_gui} to air
+    set {_held} to tool of {_p}
+    if {_held} is shears:
+        set slot 13 of {_gui} to {_held}
+        set tool of {_p} to air
+
+    set {_selected} to {specialenchant.gui.level::%uuid of {_p}%}
+    if {_selected} is not set:
+        set {_selected} to 3
+    set {specialenchant.gui.level::%uuid of {_p}%} to {_selected}
+
+    set {_levelSlots::*} to 9, 10, 11, 12, 14, 15, 16, 17, 18 and 19
+    loop 10 times:
+        set {_level} to loop-number
+        set {_button} to shears named "&dShear Fortune %{_level}%"
+        if {_level} is {_selected}:
+            set name of {_button} to "&aShear Fortune %{_level}% &7(Selected)"
+        set lore of {_button} to "&7Click to select this level."
+        set slot {_levelSlots::%loop-index%} of {_gui} to {_button}
+
+    set slot 20 of {_gui} to barrier named "&cRemove Enchantment" with lore "&7Removes Shear Fortune from the sample."
+    set slot 22 of {_gui} to lime dye named "&a&lAPPLY & CLOSE" with lore "&7Enchant the shears in the middle slot."
+    set {specialenchant.gui.open::%uuid of {_p}%} to true
+    open {_gui} to {_p}
+
+
+on inventory click:
+    if {specialenchant.gui.open::%uuid of player%} is not true:
+        stop
+    if name of player's current inventory is not "&8Special Enchantments":
+        stop
+
+    set {_rawSlot} to raw index of event-slot
+    if {_rawSlot} > 26:
+        stop
+
+    # Only the center sample slot can be edited directly.
+    if {_rawSlot} is 13:
+        if inventory action is move to other inventory:
+            cancel event
+            send action bar "&cUse a normal click to place the shears." to player
+        stop
+
+    cancel event
+
+    if {_rawSlot} is 22:
+        set {_sample} to slot 13 of player's current inventory
+        if {_sample} is not shears:
+            send "{@se-prefix}&cPlace shears in the middle slot first." to player
+            stop
+        set {_level} to {specialenchant.gui.level::%uuid of player%}
+        if {_level} is not set:
+            set {_level} to 3
+        set {_enchanted} to seApplyShearFortune({_sample}, {_level})
+        set slot 13 of player's current inventory to air
+        set {specialenchant.gui.applied::%uuid of player%} to true
+        give {_enchanted} to player
+        send "{@se-prefix}&aGave you &dShear Fortune %{_level}% &ashears." to player
+        close player's inventory
+        stop
+
+    if {_rawSlot} is 20:
+        set {_sample} to slot 13 of player's current inventory
+        if {_sample} is not shears:
+            send "{@se-prefix}&cPlace shears in the middle slot first." to player
+            stop
+        set {_sample} to seApplyShearFortune({_sample}, 0)
+        # Level zero is handled by removing the marker lore line below.
+        set {_sampleLore::*} to lore of {_sample}
+        delete {_cleanLore::*}
+        loop {_sampleLore::*}:
+            set {_plain} to uncolored loop-value
+            set {_parts::*} to {_plain} split at "|"
+            if {_parts::2} is not "SE":
+                add loop-value to {_cleanLore::*}
+            else if {_parts::3} is not "shearfortune":
+                add loop-value to {_cleanLore::*}
+        set lore of {_sample} to {_cleanLore::*}
+        set slot 13 of player's current inventory to air
+        set {specialenchant.gui.applied::%uuid of player%} to true
+        give {_sample} to player
+        send "{@se-prefix}&aRemoved Shear Fortune and returned the shears." to player
+        close player's inventory
+        stop
+
+    set {_levelSlots::*} to 9, 10, 11, 12, 14, 15, 16, 17, 18 and 19
+    loop {_levelSlots::*}:
+        if loop-value is {_rawSlot}:
+            set {_selectedLevel} to loop-index
+            set {specialenchant.gui.level::%uuid of player%} to {_selectedLevel}
+            loop {_levelSlots::*}:
+                set {_button} to slot loop-value of player's current inventory
+                if {_button} is not air:
+                    if loop-index is {_selectedLevel}:
+                        set name of {_button} to "&aShear Fortune %{_selectedLevel}% &7(Selected)"
+                    else:
+                        set name of {_button} to "&dShear Fortune %loop-index%"
+                    set slot loop-value of player's current inventory to {_button}
+            send action bar "&dShear Fortune level %{_selectedLevel}% selected." to player
+            stop
+
+
+on inventory drag:
+    if {specialenchant.gui.open::%uuid of player%} is true:
+        if name of player's current inventory is "&8Special Enchantments":
+            cancel event
+            send action bar "&cUse a normal click to place the shears." to player
+
+
+on inventory close:
+    if {specialenchant.gui.open::%uuid of player%} is not true:
+        stop
+    if name of event-inventory is not "&8Special Enchantments":
+        stop
+
+    delete {specialenchant.gui.open::%uuid of player%}
+    if {specialenchant.gui.applied::%uuid of player%} is true:
+        delete {specialenchant.gui.applied::%uuid of player%}
+        stop
+
+    set {_sample} to slot 13 of event-inventory
+    if {_sample} is not air:
+        give {_sample} to player
+        send "{@se-prefix}&7Returned the sample item to your inventory." to player
+
+
 command /specialenchant [<text>] [<text>] [<integer>]:
     description: Apply custom item enchantments and configure their safe region
     usage: /specialenchant
@@ -191,11 +331,7 @@ command /specialenchant [<text>] [<text>] [<integer>]:
             stop
 
         if arg-1 is not set:
-            send "{@se-prefix}&fAvailable enchant: &dShear Fortune" to player
-            send "&e/specialenchant add shearfortune <level>" to player
-            send "&e/specialenchant remove shearfortune" to player
-            send "&e/specialenchant info" to player
-            send "&e/specialenchant region <pos1|pos2|radius|default|info|clear>" to player
+            seOpenGui(player)
             stop
 
         if arg-1 is "add":
