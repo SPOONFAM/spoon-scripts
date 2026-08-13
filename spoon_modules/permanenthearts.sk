@@ -8,6 +8,7 @@
 #
 # Operator commands:
 #   /heartadmin                         - Set the exact redeemable item in a GUI
+#   /hearts reset <player>               - Remove a user's extra hearts
 #   /permanentheart [player] [amount]   - Give copies of that item
 #
 # One Minecraft heart is 2 health points. Players always keep their normal
@@ -179,11 +180,42 @@ command /permanentheart [<player>] [<integer>]:
             send "{@ph-prefix}&aYou received &f%{_amount}% Permanent Heart(s)&a." to {_target}
 
 
-# Shows only permanent hearts managed by this script.
-command /hearts:
-    description: View your permanent extra-heart count
+# Shows a player's own total, or lets an operator reset another user's extras.
+command /hearts [<text>] [<offline player>]:
+    description: View or administratively reset permanent extra hearts
+    usage: /hearts OR /hearts reset <player>
     executable by: players
     trigger:
+        if arg-1 is set:
+            if arg-1 is not "reset":
+                send "{@ph-prefix}&cUsage: /hearts OR /hearts reset <player>" to player
+                stop
+
+            if player is not an operator:
+                send "{@ph-prefix}&cOnly server operators can reset hearts." to player
+                stop
+
+            if arg-2 is not set:
+                send "{@ph-prefix}&cUsage: /hearts reset <player>" to player
+                stop
+
+            set {_target} to arg-2
+            set {_targetId} to uuid of {_target}
+            set {_removed} to {permanenthearts.extra::%{_targetId}%}
+            if {_removed} is not set:
+                set {_removed} to 0
+
+            set {permanenthearts.extra::%{_targetId}%} to 0
+
+            # Apply the normal 10-heart maximum immediately if they are online.
+            loop all players:
+                if uuid of loop-player is {_targetId}:
+                    applyPermanentHearts(loop-player)
+                    send "{@ph-prefix}&eYour extra hearts were reset by an operator." to loop-player
+
+            send "{@ph-prefix}&aReset &f%{_target}%&a's extra hearts. &7Removed: &c%{_removed}%&7." to player
+            stop
+
         set {_id} to uuid of player
         if {permanenthearts.extra::%{_id}%} is not set:
             set {permanenthearts.extra::%{_id}%} to 0
