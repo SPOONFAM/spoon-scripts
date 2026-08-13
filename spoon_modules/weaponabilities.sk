@@ -5,6 +5,7 @@
 #   /weaponability                    (opens the GUI)
 #   /weaponability add lightning 8
 #   /weaponability add fireball 5
+#   /weaponability add web 10
 #   /weaponability remove lightning
 #   /weaponability clear
 #   /weaponability info
@@ -17,6 +18,7 @@ options:
     wa-gui-title: &8Weapon Ability Editor
     max-cooldown: 3600
     fireball-speed: 1.5
+    web-duration: 10 seconds
 
 
 # Adds or removes an ability on the item in the player's main hand.
@@ -44,6 +46,8 @@ function waToggleAbility(p: player, ability: text, seconds: number):
             add "&6Lightning Strike &7(&e%{_seconds}%s cooldown&7)&0|WA|lightning|%{_seconds}%" to {_newLore::*}
         else if {_ability} is "fireball":
             add "&cFireball &7(&e%{_seconds}%s cooldown&7)&0|WA|fireball|%{_seconds}%" to {_newLore::*}
+        else if {_ability} is "web":
+            add "&fWeb Trap &7(&e%{_seconds}%s cooldown&7)&0|WA|web|%{_seconds}%" to {_newLore::*}
         set lore of {_tool} to {_newLore::*}
         send "{@wa-prefix}&aAdded &f%{_ability}% &awith a &f%{_seconds}% second &acooldown." to {_p}
 
@@ -66,6 +70,21 @@ function waClearAbilities(p: player):
     send "{@wa-prefix}&aRemoved every ability from the held weapon." to {_p}
 
 
+# Places temporary cobwebs only in air blocks, then removes those same webs.
+function waCreateWebTrap(v: entity):
+    delete {_placedWebs::*}
+
+    loop blocks in radius 1 around location of {_v}:
+        if loop-block is air:
+            set loop-block to cobweb
+            add location of loop-block to {_placedWebs::*}
+
+    wait {@web-duration}
+    loop {_placedWebs::*}:
+        if block at loop-value is cobweb:
+            set block at loop-value to air
+
+
 # Builds the operator chest menu.
 function waOpenGui(p: player):
     if tool of {_p} is air:
@@ -83,7 +102,7 @@ function waOpenGui(p: player):
         set slot {_slot} of {_gui} to {_filler}
 
     set {_help} to book named "&bHow to use"
-    set lore of {_help} to "&7Hold the weapon you want to edit." and "&7Choose a cooldown, then click" and "&7Lightning or Fireball to toggle it."
+    set lore of {_help} to "&7Hold the weapon you want to edit." and "&7Choose a cooldown, then click" and "&7an ability below to toggle it."
     set slot 0 of {_gui} to {_help}
 
     # The held weapon is only a preview. All menu clicks are cancelled.
@@ -102,6 +121,7 @@ function waOpenGui(p: player):
 
     set {_hasLightning} to false
     set {_hasFireball} to false
+    set {_hasWeb} to false
     loop lore of tool of {_p}:
         set {_plain} to uncolored loop-value
         set {_parts::*} to {_plain} split at "|"
@@ -110,24 +130,33 @@ function waOpenGui(p: player):
                 set {_hasLightning} to true
             else if {_parts::3} is "fireball":
                 set {_hasFireball} to true
+            else if {_parts::3} is "web":
+                set {_hasWeb} to true
 
     set {_lightningButton} to lightning rod named "&6Lightning Strike"
     if {_hasLightning} is true:
         set lore of {_lightningButton} to "&aCurrently enabled." and "&7Click to remove this ability."
     else:
         set lore of {_lightningButton} to "&cCurrently disabled." and "&7Click to add it with a &f%{_selected}%s &7cooldown."
-    set slot 20 of {_gui} to {_lightningButton}
+    set slot 19 of {_gui} to {_lightningButton}
 
-    set {_clearButton} to barrier named "&cClear all abilities"
-    set lore of {_clearButton} to "&7Removes Lightning and Fireball" and "&7without changing the weapon's other lore."
-    set slot 22 of {_gui} to {_clearButton}
+    set {_webButton} to cobweb named "&fWeb Trap"
+    if {_hasWeb} is true:
+        set lore of {_webButton} to "&aCurrently enabled." and "&7Click to remove this ability." and "&7Webs disappear after &f10 seconds&7."
+    else:
+        set lore of {_webButton} to "&cCurrently disabled." and "&7Click to add it with a &f%{_selected}%s &7cooldown." and "&7Webs disappear after &f10 seconds&7."
+    set slot 21 of {_gui} to {_webButton}
 
     set {_fireballButton} to fire charge named "&cFireball"
     if {_hasFireball} is true:
         set lore of {_fireballButton} to "&aCurrently enabled." and "&7Click to remove this ability."
     else:
         set lore of {_fireballButton} to "&cCurrently disabled." and "&7Click to add it with a &f%{_selected}%s &7cooldown."
-    set slot 24 of {_gui} to {_fireballButton}
+    set slot 23 of {_gui} to {_fireballButton}
+
+    set {_clearButton} to barrier named "&cClear all abilities"
+    set lore of {_clearButton} to "&7Removes every weapon ability" and "&7without changing the weapon's other lore."
+    set slot 25 of {_gui} to {_clearButton}
 
     set {_closeButton} to oak door named "&cClose"
     set slot 26 of {_gui} to {_closeButton}
@@ -138,7 +167,7 @@ function waOpenGui(p: player):
 # remain available for console-style editing and backwards compatibility.
 command /weaponability [<text>] [<text>] [<number>]:
     description: Add or remove an ability from the held weapon
-    usage: /weaponability <add|remove|clear|info> [lightning|fireball] [cooldown seconds]
+    usage: /weaponability <add|remove|clear|info> [lightning|fireball|web] [cooldown seconds]
     executable by: players
     trigger:
         if player is not an operator:
@@ -186,13 +215,14 @@ command /weaponability [<text>] [<text>] [<number>]:
                 stop
 
         if arg-2 is not set:
-            send "{@wa-prefix}&cChoose &flightning &cor &ffireball&c." to player
+            send "{@wa-prefix}&cChoose &flightning&c, &ffireball&c, or &fweb&c." to player
             stop
 
         if arg-2 is not "lightning":
             if arg-2 is not "fireball":
-                send "{@wa-prefix}&cUnknown ability. Choose &flightning &cor &ffireball&c." to player
-                stop
+                if arg-2 is not "web":
+                    send "{@wa-prefix}&cUnknown ability. Choose &flightning&c, &ffireball&c, or &fweb&c." to player
+                    stop
 
         set {_ability} to arg-2
 
@@ -236,6 +266,8 @@ command /weaponability [<text>] [<text>] [<number>]:
             add "&6Lightning Strike &7(&e%{_seconds}%s cooldown&7)&0|WA|lightning|%{_seconds}%" to {_newLore::*}
         else if {_ability} is "fireball":
             add "&cFireball &7(&e%{_seconds}%s cooldown&7)&0|WA|fireball|%{_seconds}%" to {_newLore::*}
+        else if {_ability} is "web":
+            add "&fWeb Trap &7(&e%{_seconds}%s cooldown&7)&0|WA|web|%{_seconds}%" to {_newLore::*}
 
         set lore of {_tool} to {_newLore::*}
         set player's tool to {_tool}
@@ -293,18 +325,23 @@ on inventory click:
             stop
 
         set {_seconds} to {weaponability.gui.cooldown::%uuid of player%}
-        if {_slot} is 20:
+        if {_slot} is 19:
             waToggleAbility(player, "lightning", {_seconds})
             wait 1 tick
             waOpenGui(player)
             stop
-        if {_slot} is 22:
-            waClearAbilities(player)
+        if {_slot} is 21:
+            waToggleAbility(player, "web", {_seconds})
             wait 1 tick
             waOpenGui(player)
             stop
-        if {_slot} is 24:
+        if {_slot} is 23:
             waToggleAbility(player, "fireball", {_seconds})
+            wait 1 tick
+            waOpenGui(player)
+            stop
+        if {_slot} is 25:
+            waClearAbilities(player)
             wait 1 tick
             waOpenGui(player)
             stop
@@ -317,7 +354,8 @@ on inventory drag:
         cancel event
 
 
-# Lightning Strike activates when the wielder directly damages a living entity.
+# Lightning Strike and Web Trap activate when the wielder directly damages a
+# living entity. Each ability has its own player cooldown.
 on damage:
     if event is cancelled:
         stop
@@ -328,27 +366,48 @@ on damage:
     if attacker's tool is air:
         stop
 
-    delete {_cooldown}
+    delete {_lightningCooldown}
+    delete {_webCooldown}
     loop lore of attacker's tool:
         set {_plain} to uncolored loop-value
         set {_parts::*} to {_plain} split at "|"
         if {_parts::2} is "WA":
             if {_parts::3} is "lightning":
-                set {_cooldown} to {_parts::4} parsed as number
+                set {_lightningCooldown} to {_parts::4} parsed as number
+            else if {_parts::3} is "web":
+                set {_webCooldown} to {_parts::4} parsed as number
 
-    if {_cooldown} is not set:
-        stop
-
-    set {_now} to unix timestamp of now
-    if {weaponability.cooldown::%uuid of attacker%::lightning} is set:
-        if {weaponability.cooldown::%uuid of attacker%::lightning} > {_now}:
-            set {_remaining} to ceil({weaponability.cooldown::%uuid of attacker%::lightning} - {_now})
-            send action bar "&6Lightning Strike &cis recharging for &f%{_remaining}%s&c." to attacker
+    if {_lightningCooldown} is not set:
+        if {_webCooldown} is not set:
             stop
 
-    set {weaponability.cooldown::%uuid of attacker%::lightning} to {_now} + {_cooldown}
-    strike lightning at victim
-    send action bar "&6Lightning Strike activated!" to attacker
+    set {_now} to unix timestamp of now
+
+    if {_lightningCooldown} is set:
+        set {_lightningReady} to true
+        if {weaponability.cooldown::%uuid of attacker%::lightning} is set:
+            if {weaponability.cooldown::%uuid of attacker%::lightning} > {_now}:
+                set {_remaining} to ceil({weaponability.cooldown::%uuid of attacker%::lightning} - {_now})
+                send action bar "&6Lightning Strike &cis recharging for &f%{_remaining}%s&c." to attacker
+                set {_lightningReady} to false
+
+        if {_lightningReady} is true:
+            set {weaponability.cooldown::%uuid of attacker%::lightning} to {_now} + {_lightningCooldown}
+            strike lightning at victim
+            send action bar "&6Lightning Strike activated!" to attacker
+
+    if {_webCooldown} is set:
+        set {_webReady} to true
+        if {weaponability.cooldown::%uuid of attacker%::web} is set:
+            if {weaponability.cooldown::%uuid of attacker%::web} > {_now}:
+                set {_remaining} to ceil({weaponability.cooldown::%uuid of attacker%::web} - {_now})
+                send action bar "&fWeb Trap &cis recharging for &f%{_remaining}%s&c." to attacker
+                set {_webReady} to false
+
+        if {_webReady} is true:
+            set {weaponability.cooldown::%uuid of attacker%::web} to {_now} + {_webCooldown}
+            send action bar "&fWeb Trap activated for 10 seconds!" to attacker
+            waCreateWebTrap(victim)
 
 
 # Fireball activates when the wielder right-clicks with the weapon.
