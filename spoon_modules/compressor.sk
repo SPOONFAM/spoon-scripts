@@ -253,9 +253,120 @@ on inventory close:
     else:
         set {_voucher} to slot 16 of event-inventory
         set {_voucherAmount} to item amount of {_voucher}
-        set item#õîÚ$z{-®éÜj×ù”$=d€ ˆZ‘/l<?ÎÅÒ»^TÚqr¼­cÄ‘ş”œ ÿTÛ0ÙlGÜ€šáHòåægXİ¶ÉºbmìòˆLºÑíÌÍş÷ô!t»DŸÏ5¹£}`PA3Í9}”Í$<’duü"gˆ¬òŸ'YcYÈA$EO#Öyèçc]€u~êÃÌ±ËgœAªúƒÌ	u,¿	šø&oàZ³nè$ÿ~•_¡—èözˆ}È;ö!wÑyıcà'ãòS}ş{ş
-ïî=ø%¯àT~“}aYÀÄe¿I‰.¯½ ˆ\›äW>8“Õªı%ùs=õRNE.û~ÅÔ6æŒ¨+Ëùë	fNnüÊ½s‹ÙÜíXãVuPØ¿Qåõ—z0ğ|ñfUäá¬ª€•Ãœ¼|ç×J2ğI§hàEYC¿!şóú"óÕW#­?"Q}í¬÷L£œ’ä3Ô{nÒ#vgNL>ÆMçÌj¥@“ÿ(ü¸Š|?Æ¼=EÅä'ıº#ıÀã§İO”ğ/â¼ZqJÏ•ÿ ßa%ªD’ÖÔƒÖ~¤U¸ÓnöÓğ£üå5ùFkñ°óô‡šÃI?]9’%×!ä“[ô>}½b°5Kş€×	szëjI˜ı˜—w—Búü7Ï®lF=;
-™V;cÒ#)ãP¯ÀÀ6äjõC £ÜéPÄ±jV›0é\0W*¯8ég˜Ek£4to$sWÿ"¥=^z‚T+-Ò˜ŞŒÔ÷UË\âªğ:`«¢ú	)qß_v0aÁlé‰RŒ(†	~B\ÃM«ãİ7C“¶q,öp¦’¬à— ¦ê-vX°¸ƒ'ÇM¼g)ÖK©°uöuñ¾‘JH	ÈT\Á'İ¢ò8w/R"|VÌWØW19*rûÊD|›¦DÙT2­dŒ(—¡ …™nÒ–T§DÙ\6®C¼­;B
-*òoGÊ‘kç6U!j¬¨µ¦R‹’àQOmí¡=hj/Ââr2²*.¢R-¤Uî¢9- u<GÕÊ¤–ÈËÑ&i/„6jUië;a×9eŞFINæ“ºú0ùF}å–@êß‡JÛ²b©¶’ªÄ-[4Ö’Xv‡TÖ;È†Ôn©ª:¦."Q¨/úbª|!uRNm©áÎÅ‚Wˆ¹8ŸÜÙp^‡:IìmqumkÖ].Q	k‚’v Í„öğeäox$pMÕ`<Á3j7ìT¡ña»(Ä5×ø Z²-qÊš]qURÒâ^Z>ZQ©ö©‰0_öÚUÜÔÕŒKÕH¦êÃiBˆ¸eZnİm>_*M:Ös«lÆÕŒ	&>×¡wBÓv#ª\ÿd§~PøïÀ”öÌqQF‚>3ç‘S½-İgR#8­FîVzç–«-ëãÍE•ˆiV}ÖÖîµÖ$zšG
-ÙŒäm(Ø?Mm ;Õù/È}@}0« ™ÔÎ{ÙNÅêQËRRÇÜÀı©tı™u¾Îºİo_[ÕM' îKAİo]î·­II}"Û½>Úı±t~Ê¸>­²&™N'éª{ñß8KÖÔÕ{ènô™·XñöwËT'r}ìLV¡¿@³ÖñéEö.óü-A,"Jip  \ğ A,P    Ùp5t            (  Á±Õ¥¸¹åµ±µ@í¿€C{äVİ”©ÔêÉV«P;tñXt¹Á9FğK—|Œ­ÇU»Æ÷¸/¡'bg„“:RË–€¼ä">Û68Ë<ƒ]É/¢º“uzø0í„¡HÀ*ûNÊÅòİ[ÏQ;’ºB½#×‚²İlû©‡$,h‹¨Oa@`X„¤Ñî?”êˆh4Zj|ıs{ãK
-ˆúX|5†Ëk#óÖIv™˜òÙZxßéô|¥æn]İ¶ƒÄÚ#¼p[Á?_ŸãH¨#66NÑL_×rSb¿W!Uƒª)¨QÄA,"_@‡—¬  ø A,( (     t5t            $               5Qµ%9¿û( A,P P     t5tbk…      P             ¬  5Qµ%9½59%MP¹5A,P P    õl5wš[cp  @   (            ¼  ½¹™¥œ¹åµ±A,( (    ¡p5t                         ‘•Ø½A,( (    ¡p5t            @            ” ‘•Ø½ÍÁ½½¹±½…‘•È½A,P P    ¡p5wjdÅ¹T ü  ¸            L ‘•Ø½ÍÁ½½¹±½…‘•È½MÁ½½¹1½…‘•È‘UÁ‘…Ñ•I•ÍÕ±Ğ¹±…ÍÍA,P P    ¡p5vJip  \ğ  „             ‘•Ø½ÍÁ½½¹±½…‘•È½MÁ½½¹1½…‘•È¹±…ÍÍA,P P    Ùp5v_@‡—¬  ø  (             d„ Á±Õ¥¸¹åµ±A,           ğˆ   
+        set item amount of {_voucher} to 1
+        set {compressor.item::voucher} to {_voucher}
+        if {_voucherAmount} > 1:
+            set {_extra} to {_voucherAmount} - 1
+            give {_extra} of {_voucher} to player
+
+    if currencyItemsAreConfigured() is true:
+        send "{@prefix}&aCurrency items saved successfully." to player
+    else:
+        send "{@prefix}&cCurrency setup is incomplete. Fill the first three slots." to player
+
+    if {compressor.item::voucher} is set:
+        send "{@prefix}&aVoucher item saved successfully." to player
+    else:
+        send "{@prefix}&eVoucher is not configured; /compressvoucher is unavailable." to player
+
+
+# Right-clicking the exact configured voucher permanently unlocks the feature.
+on right click:
+    if {compressor.item::voucher} is not set:
+        stop
+
+    set {_voucher} to {compressor.item::voucher}
+    if player's tool is not {_voucher}:
+        stop
+
+    cancel event
+
+    if hasCompressor(player) is true:
+        send "{@prefix}&eYou have already unlocked the compressor." to player
+        stop
+
+    remove 1 of {_voucher} from player's inventory
+    set {compressor.unlocked::%uuid of player%} to true
+    execute console command "lp user %uuid of player% permission set {@use-permission} true"
+    execute console command "lp user %uuid of player% permission set {@requested-use-permission} true"
+    set {compressor.enabled::%uuid of player%} to false
+    send "{@prefix}&aCompressor access permanently unlocked!" to player
+    send "{@prefix}&7Use &e/compress on &7when you want to enable it." to player
+    play sound "entity.player.levelup" with volume 1 and pitch 1 to player
+
+
+command /compress [<text>]:
+    description: Enable, disable, or check your automatic compressor
+    usage: /compress <on|off|status>
+    executable by: players
+    trigger:
+        if hasCompressor(player) is false:
+            send "{@prefix}&cRedeem a Compressor Voucher before using this command." to player
+            stop
+
+        if currencyItemsAreConfigured() is false:
+            send "{@prefix}&cThe server owner has not finished /compressadmin setup." to player
+            stop
+
+        if arg-1 is not set:
+            if {compressor.enabled::%uuid of player%} is true:
+                send "{@prefix}&7Your compressor is currently &aON&7." to player
+            else:
+                send "{@prefix}&7Your compressor is currently &cOFF&7." to player
+            send "{@prefix}&7Use &e/compress on &7or &e/compress off&7." to player
+            stop
+
+        if arg-1 is "on":
+            if {compressor.enabled::%uuid of player%} is true:
+                send "{@prefix}&eYour compressor is already enabled." to player
+                stop
+            set {compressor.enabled::%uuid of player%} to true
+            compressInventory(player)
+            send "{@prefix}&aAutomatic compression enabled." to player
+            stop
+
+        if arg-1 is "off":
+            if {compressor.enabled::%uuid of player%} is not true:
+                send "{@prefix}&eYour compressor is already disabled." to player
+                stop
+            set {compressor.enabled::%uuid of player%} to false
+            send "{@prefix}&cAutomatic compression disabled." to player
+            stop
+
+        if arg-1 is "status":
+            if {compressor.enabled::%uuid of player%} is true:
+                send "{@prefix}&7Your compressor is currently &aON&7." to player
+            else:
+                send "{@prefix}&7Your compressor is currently &cOFF&7." to player
+            stop
+
+        send "{@prefix}&cUsage: /compress <on|off|status>" to player
+
+
+# Gives the operator an exact copy of the voucher configured in the GUI.
+command /compressvoucher:
+    description: Receive a configured redeemable Compressor Voucher
+    executable by: players
+    trigger:
+        if player is not an operator:
+            send "{@prefix}&cOnly server operators can use this command." to player
+            stop
+
+        if {compressor.item::voucher} is not set:
+            send "{@prefix}&cSet the voucher item with /compressadmin first." to player
+            stop
+
+        give {compressor.item::voucher} to player
+        send "{@prefix}&aYou received the configured Compressor Voucher." to player
+
+
+on load:
+    delete {compressor.admin.open::*}
+
+
+every {@compress-interval}:
+    if currencyItemsAreConfigured() is true:
+        loop all players:
+            if hasCompressor(loop-player) is true:
+                if {compressor.enabled::%uuid of loop-player%} is true:
+                    compressInventory(loop-player)
