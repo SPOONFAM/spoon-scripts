@@ -1,0 +1,353 @@
+# specialenchantments.sk
+# Custom, item-bound enchantments for plain Skript.
+#
+# First enchantment: Shear Fortune
+# - Works only on red wool inside the configured region.
+# - Fortune uses Minecraft's usual fortune bonus roll.
+# - Area mining follows the face/direction the player is mining.
+# - Every candidate block is checked against the region before it is removed.
+#
+# Operator commands:
+#   /specialenchant add shearfortune <level>
+#   /specialenchant remove shearfortune
+#   /specialenchant info
+#   /specialenchant region pos1
+#   /specialenchant region pos2
+#   /specialenchant region radius <0-3>
+#   /specialenchant region default
+#   /specialenchant region info
+#   /specialenchant region clear
+
+options:
+    se-prefix: &8[&dSpecial Enchants&8] &r
+    se-max-fortune: 10
+    se-max-radius: 3
+
+
+function seRoman(level: number) returns text:
+    if {_level} is 1:
+        return "I"
+    if {_level} is 2:
+        return "II"
+    if {_level} is 3:
+        return "III"
+    if {_level} is 4:
+        return "IV"
+    if {_level} is 5:
+        return "V"
+    if {_level} is 6:
+        return "VI"
+    if {_level} is 7:
+        return "VII"
+    if {_level} is 8:
+        return "VIII"
+    if {_level} is 9:
+        return "IX"
+    if {_level} is 10:
+        return "X"
+    return "%{_level}%"
+
+
+# Reads Shear Fortune from the item's hidden lore marker.
+function seFortuneLevel(i: item) returns number:
+    loop lore of {_i}:
+        set {_plain} to uncolored loop-value
+        set {_parts::*} to {_plain} split at "|"
+        if {_parts::2} is "SE":
+            if {_parts::3} is "shearfortune":
+                set {_level} to {_parts::4} parsed as number
+                if {_level} is set:
+                    return {_level}
+    return 0
+
+
+# Adds or replaces Shear Fortune without removing the item's normal lore.
+function seAddShearFortune(p: player, level: number):
+    set {_tool} to tool of {_p}
+    delete {_newLore::*}
+
+    loop lore of {_tool}:
+        set {_plain} to uncolored loop-value
+        set {_parts::*} to {_plain} split at "|"
+        if {_parts::2} is not "SE":
+            add loop-value to {_newLore::*}
+        else if {_parts::3} is not "shearfortune":
+            add loop-value to {_newLore::*}
+
+    set {_roman} to seRoman({_level})
+    add "&dShear Fortune %{_roman}% &7(Red Wool)&0|SE|shearfortune|%{_level}%" to {_newLore::*}
+    set lore of {_tool} to {_newLore::*}
+    set tool of {_p} to {_tool}
+
+
+# Removes only Shear Fortune and preserves all unrelated lore.
+function seRemoveShearFortune(p: player) returns boolean:
+    set {_tool} to tool of {_p}
+    delete {_newLore::*}
+    set {_found} to false
+
+    loop lore of {_tool}:
+        set {_plain} to uncolored loop-value
+        set {_parts::*} to {_plain} split at "|"
+        if {_parts::2} is "SE":
+            if {_parts::3} is "shearfortune":
+                set {_found} to true
+            else:
+                add loop-value to {_newLore::*}
+        else:
+            add loop-value to {_newLore::*}
+
+    set lore of {_tool} to {_newLore::*}
+    set tool of {_p} to {_tool}
+    return {_found}
+
+
+function seRegionReady() returns boolean:
+    if {specialenchant.region.pos1} is not set:
+        return false
+    if {specialenchant.region.pos2} is not set:
+        return false
+    return true
+
+
+# Vanilla's uniform fortune bonus: level 3 can yield 1, 1, 2, 3, or 4.
+function seFortuneDrop(level: number) returns number:
+    set {_maximumRoll} to {_level} + 1
+    set {_bonus} to random integer between 0 and {_maximumRoll}
+    remove 1 from {_bonus}
+    if {_bonus} < 0:
+        set {_bonus} to 0
+    set {_drops} to {_bonus} + 1
+    return {_drops}
+
+
+# Breaks a square centered on the mined block. Looking up/down uses X/Z;
+# looking north/south uses X/Y; looking east/west uses Z/Y.
+function seBreakRedWoolArea(p: player, center: location, level: number, radius: number) returns number:
+    set {_plane} to "xy"
+    set {_pitch} to pitch of {_p}
+
+    if {_pitch} > 55:
+        set {_plane} to "xz"
+    else if {_pitch} < -55:
+        set {_plane} to "xz"
+    else:
+        set {_yaw} to yaw of {_p}
+        while {_yaw} < 0:
+            add 360 to {_yaw}
+        while {_yaw} >= 360:
+            remove 360 from {_yaw}
+        if {_yaw} >= 45:
+            if {_yaw} < 135:
+                set {_plane} to "zy"
+        if {_yaw} >= 225:
+            if {_yaw} < 315:
+                set {_plane} to "zy"
+
+    set {_minimum} to 0 - {_radius}
+    set {_broken} to 0
+
+    loop integers between {_minimum} and {_radius}:
+        set {_firstOffset} to loop-value
+        loop integers between {_minimum} and {_radius}:
+            set {_secondOffset} to loop-value
+            set {_dx} to 0
+            set {_dy} to 0
+            set {_dz} to 0
+
+            if {_plane} is "xz":
+                set {_dx} to {_firstOffset}
+                set {_dz} to {_secondOffset}
+            else if {_plane} is "zy":
+                set {_dz} to {_firstOffset}
+                set {_dy} to {_secondOffset}
+            else:
+                set {_dx} to {_firstOffset}
+                set {_dy} to {_secondOffset}
+
+            set {_x} to x-coordinate of {_center} + {_dx}
+            set {_y} to y-coordinate of {_center} + {_dy}
+            set {_z} to z-coordinate of {_center} + {_dz}
+            set {_target} to location({_x}, {_y}, {_z}, world of {_center})
+
+            # This check prevents the area ability from crossing the admin box.
+            if {_target} is within {specialenchant.region.pos1} and {specialenchant.region.pos2}:
+                if block at {_target} is red wool:
+                    set block at {_target} to air
+                    set {_dropAmount} to seFortuneDrop({_level})
+                    drop {_dropAmount} of red wool at {_target}
+                    add 1 to {_broken}
+
+    return {_broken}
+
+
+command /specialenchant [<text>] [<text>] [<integer>]:
+    description: Apply custom item enchantments and configure their safe region
+    usage: /specialenchant
+    executable by: players
+    trigger:
+        if player is not an operator:
+            send "{@se-prefix}&cOnly server operators can use this command." to player
+            stop
+
+        if arg-1 is not set:
+            send "{@se-prefix}&fAvailable enchant: &dShear Fortune" to player
+            send "&e/specialenchant add shearfortune <level>" to player
+            send "&e/specialenchant remove shearfortune" to player
+            send "&e/specialenchant info" to player
+            send "&e/specialenchant region <pos1|pos2|radius|default|info|clear>" to player
+            stop
+
+        if arg-1 is "add":
+            if arg-2 is not "shearfortune":
+                send "{@se-prefix}&cUse: /specialenchant add shearfortune <level>" to player
+                stop
+            if arg-3 is not set:
+                send "{@se-prefix}&cChoose a level from 1 to {@se-max-fortune}." to player
+                stop
+            if arg-3 < 1:
+                send "{@se-prefix}&cThe level must be at least 1." to player
+                stop
+            if arg-3 > {@se-max-fortune}:
+                send "{@se-prefix}&cThe highest allowed level is {@se-max-fortune}." to player
+                stop
+            if player's tool is not shears:
+                send "{@se-prefix}&cHold the shears you want to enchant." to player
+                stop
+
+            # Make the coordinates supplied for this first ability work by
+            # default in the world where the operator creates the first item.
+            if seRegionReady() is false:
+                set {specialenchant.region.pos1} to location(170, 115, -91, world of player)
+                set {specialenchant.region.pos2} to location(167, 117, -88, world of player)
+                send "{@se-prefix}&eThe default region was set to &f170 115 -91 &ethrough &f167 117 -88&e in this world." to player
+
+            seAddShearFortune(player, arg-3)
+            set {_roman} to seRoman(arg-3)
+            send "{@se-prefix}&aAdded &dShear Fortune %{_roman}% &ato the held shears." to player
+            stop
+
+        if arg-1 is "remove":
+            if arg-2 is not "shearfortune":
+                send "{@se-prefix}&cUse: /specialenchant remove shearfortune" to player
+                stop
+            if player's tool is air:
+                send "{@se-prefix}&cHold the item you want to edit." to player
+                stop
+            if seRemoveShearFortune(player) is true:
+                send "{@se-prefix}&aRemoved Shear Fortune from the held item." to player
+            else:
+                send "{@se-prefix}&eThat item does not have Shear Fortune." to player
+            stop
+
+        if arg-1 is "info":
+            if player's tool is air:
+                send "{@se-prefix}&cHold an item to inspect." to player
+                stop
+            set {_level} to seFortuneLevel(player's tool)
+            if {_level} > 0:
+                set {_roman} to seRoman({_level})
+                send "{@se-prefix}&7Held enchant: &dShear Fortune %{_roman}% &7(level %{_level}%)" to player
+            else:
+                send "{@se-prefix}&eThe held item has no Spoon special enchantment." to player
+            stop
+
+        if arg-1 is "region":
+            if arg-2 is "pos1":
+                set {_targetBlock} to target block of player
+                if {_targetBlock} is air:
+                    send "{@se-prefix}&cLook directly at the first corner block." to player
+                    stop
+                set {specialenchant.region.pos1} to location of {_targetBlock}
+                send "{@se-prefix}&aRegion position 1 set to &f%location of {_targetBlock}%&a." to player
+                stop
+
+            if arg-2 is "pos2":
+                set {_targetBlock} to target block of player
+                if {_targetBlock} is air:
+                    send "{@se-prefix}&cLook directly at the opposite corner block." to player
+                    stop
+                set {specialenchant.region.pos2} to location of {_targetBlock}
+                send "{@se-prefix}&aRegion position 2 set to &f%location of {_targetBlock}%&a." to player
+                stop
+
+            if arg-2 is "radius":
+                if arg-3 is not set:
+                    send "{@se-prefix}&cUse: /specialenchant region radius <0-{@se-max-radius}>" to player
+                    stop
+                if arg-3 < 0:
+                    send "{@se-prefix}&cThe radius cannot be below 0." to player
+                    stop
+                if arg-3 > {@se-max-radius}:
+                    send "{@se-prefix}&cThe maximum radius is {@se-max-radius}." to player
+                    stop
+                set {specialenchant.region.radius} to arg-3
+                set {_width} to (arg-3 * 2) + 1
+                send "{@se-prefix}&aArea size set to &f%{_width}%x%{_width}%&a." to player
+                stop
+
+            if arg-2 is "default":
+                set {specialenchant.region.pos1} to location(170, 115, -91, world of player)
+                set {specialenchant.region.pos2} to location(167, 117, -88, world of player)
+                send "{@se-prefix}&aRegion set to &f170 115 -91 &athrough &f167 117 -88&a in this world." to player
+                stop
+
+            if arg-2 is "info":
+                if seRegionReady() is false:
+                    send "{@se-prefix}&cThe safe mining region is not fully configured." to player
+                else:
+                    send "{@se-prefix}&7Position 1: &f%{specialenchant.region.pos1}%" to player
+                    send "{@se-prefix}&7Position 2: &f%{specialenchant.region.pos2}%" to player
+                set {_radius} to {specialenchant.region.radius}
+                if {_radius} is not set:
+                    set {_radius} to 1
+                set {_width} to ({_radius} * 2) + 1
+                send "{@se-prefix}&7Area size: &f%{_width}%x%{_width}% &8(radius %{_radius}%)" to player
+                stop
+
+            if arg-2 is "clear":
+                delete {specialenchant.region.pos1}
+                delete {specialenchant.region.pos2}
+                send "{@se-prefix}&aThe safe mining region was cleared." to player
+                stop
+
+            send "{@se-prefix}&cUse: /specialenchant region <pos1|pos2|radius|default|info|clear>" to player
+            stop
+
+        send "{@se-prefix}&cUnknown option. Run /specialenchant for help." to player
+
+
+# Shear Fortune activates only for survival/adventure mining in the safe box.
+on break of red wool:
+    if gamemode of player is creative:
+        stop
+    if player's tool is not shears:
+        stop
+
+    set {_level} to seFortuneLevel(player's tool)
+    if {_level} <= 0:
+        stop
+    if seRegionReady() is false:
+        send action bar "&cThe Shear Fortune region has not been configured." to player
+        stop
+    set {_insideRegion} to false
+    if location of event-block is within {specialenchant.region.pos1} and {specialenchant.region.pos2}:
+        set {_insideRegion} to true
+    if {_insideRegion} is false:
+        stop
+
+    cancel event
+    set {_radius} to {specialenchant.region.radius}
+    if {_radius} is not set:
+        set {_radius} to 1
+
+    set {_broken} to seBreakRedWoolArea(player, location of event-block, {_level}, {_radius})
+    if {_broken} > 0:
+        damage tool of player by 1
+        play sound "block.wool.break" with volume 1 and pitch 1.2 to player
+
+
+on load:
+    if {specialenchant.region.radius} is not set:
+        set {specialenchant.region.radius} to 1
+    send "[Special Enchants] Loaded Shear Fortune. Area radius: %{specialenchant.region.radius}%" to console
