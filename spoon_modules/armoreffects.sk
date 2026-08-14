@@ -14,10 +14,10 @@ function aeItemMatches(i: item) :: boolean:
     return false
 
 function aeOpenAdmin(p: player):
-    set {_gui} to a chest inventory with 3 rows named "{@ae-title}"
-    loop 27 times:
+    set {_gui} to a chest inventory with 6 rows named "{@ae-title}"
+    loop 54 times:
         set slot (loop-number - 1) of {_gui} to gray stained glass pane named " "
-    set slot 4 of {_gui} to book named "&dArmor effect setup" with lore "&7Place the exact armor item in the center."
+    set slot 4 of {_gui} to book named "&dArmor effect setup" with lore "&7Place the exact armor item in the center." and "&7Click an effect, duration, and level below."
     if {armoreffects.item} is set:
         set slot 13 of {_gui} to {armoreffects.item}
     else:
@@ -26,7 +26,26 @@ function aeOpenAdmin(p: player):
         set {_info} to "&f%{armoreffects.type}% &7- &f%{armoreffects.duration}%s &7- level &f%{armoreffects.level}%"
     else:
         set {_info} to "&cNo potion effect configured"
-    set slot 22 of {_gui} to emerald named "&aSave and close" with lore "&7Configured effect: %{_info}%"
+    set slot 18 of {_gui} to potion named "&dSpeed" with lore "&7Click to select speed"
+    set slot 19 of {_gui} to potion named "&dStrength" with lore "&7Click to select strength"
+    set slot 20 of {_gui} to potion named "&dHaste" with lore "&7Click to select haste"
+    set slot 21 of {_gui} to potion named "&dJump Boost" with lore "&7Click to select jump boost"
+    set slot 22 of {_gui} to potion named "&dFire Resistance" with lore "&7Click to select fire resistance"
+    set slot 23 of {_gui} to potion named "&dNight Vision" with lore "&7Click to select night vision"
+    set slot 24 of {_gui} to potion named "&dRegeneration" with lore "&7Click to select regeneration"
+    set slot 25 of {_gui} to potion named "&dResistance" with lore "&7Click to select resistance"
+    set slot 27 of {_gui} to clock named "&e10 seconds"
+    set slot 28 of {_gui} to clock named "&e30 seconds"
+    set slot 29 of {_gui} to clock named "&e60 seconds"
+    set slot 30 of {_gui} to clock named "&e120 seconds"
+    set slot 31 of {_gui} to clock named "&e300 seconds"
+    set slot 36 of {_gui} to experience bottle named "&bLevel 1"
+    set slot 37 of {_gui} to experience bottle named "&bLevel 2"
+    set slot 38 of {_gui} to experience bottle named "&bLevel 3"
+    set slot 39 of {_gui} to experience bottle named "&bLevel 4"
+    set slot 40 of {_gui} to experience bottle named "&bLevel 5"
+    set slot 45 of {_gui} to book named "&fCurrent selection" with lore "&7%{_info}%"
+    set slot 49 of {_gui} to emerald named "&aSave and close" with lore "&7%{_info}%"
     set {armoreffects.admin.open::%uuid of {_p}%} to true
     open {_gui} to {_p}
 
@@ -100,7 +119,7 @@ on inventory click:
         stop
     if name of event-inventory is not "{@ae-title}":
         stop
-    if raw slot is greater than 26:
+    if raw slot is greater than 53:
         stop
     cancel event
     if raw slot is 13:
@@ -113,7 +132,61 @@ on inventory click:
         set slot 13 of event-inventory to {_sample}
         set cursor slot to air
         stop
+    if raw slot is 18:
+        set {armoreffects.type} to "speed"
+        stop
+    if raw slot is 19:
+        set {armoreffects.type} to "strength"
+        stop
+    if raw slot is 20:
+        set {armoreffects.type} to "haste"
+        stop
+    if raw slot is 21:
+        set {armoreffects.type} to "jump boost"
+        stop
     if raw slot is 22:
+        set {armoreffects.type} to "fire resistance"
+        stop
+    if raw slot is 23:
+        set {armoreffects.type} to "night vision"
+        stop
+    if raw slot is 24:
+        set {armoreffects.type} to "regeneration"
+        stop
+    if raw slot is 25:
+        set {armoreffects.type} to "resistance"
+        stop
+    if raw slot is 27:
+        set {armoreffects.duration} to 10
+        stop
+    if raw slot is 28:
+        set {armoreffects.duration} to 30
+        stop
+    if raw slot is 29:
+        set {armoreffects.duration} to 60
+        stop
+    if raw slot is 30:
+        set {armoreffects.duration} to 120
+        stop
+    if raw slot is 31:
+        set {armoreffects.duration} to 300
+        stop
+    if raw slot is 36:
+        set {armoreffects.level} to 1
+        stop
+    if raw slot is 37:
+        set {armoreffects.level} to 2
+        stop
+    if raw slot is 38:
+        set {armoreffects.level} to 3
+        stop
+    if raw slot is 39:
+        set {armoreffects.level} to 4
+        stop
+    if raw slot is 40:
+        set {armoreffects.level} to 5
+        stop
+    if raw slot is 49:
         close player's inventory
 
 on inventory drag:
