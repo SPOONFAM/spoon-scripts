@@ -1,0 +1,167 @@
+options:
+    ae-prefix: &8[&dArmorEffects&8] &r
+    ae-title: &8Armor Effect Admin
+
+function aeItemMatches(i: item) :: boolean:
+    if {armoreffects.item} is not set:
+        return false
+    if i is air:
+        return false
+    set {_candidate} to i
+    set item amount of {_candidate} to 1
+    if {_candidate} is {armoreffects.item}:
+        return true
+    return false
+
+function aeOpenAdmin(p: player):
+    set {_gui} to a chest inventory with 3 rows named "{@ae-title}"
+    loop 27 times:
+        set slot (loop-number - 1) of {_gui} to gray stained glass pane named " "
+    set slot 4 of {_gui} to book named "&dArmor effect setup" with lore "&7Place the exact armor item in the center."
+    if {armoreffects.item} is set:
+        set slot 13 of {_gui} to {armoreffects.item}
+    else:
+        set slot 13 of {_gui} to barrier named "&cNo armor item set" with lore "&7Put an item here, then close the menu."
+    if {armoreffects.type} is set:
+        set {_info} to "&f%{armoreffects.type}% &7- &f%{armoreffects.duration}%s &7- level &f%{armoreffects.level}%"
+    else:
+        set {_info} to "&cNo potion effect configured"
+    set slot 22 of {_gui} to emerald named "&aSave and close" with lore "&7Configured effect: %{_info}%"
+    set {armoreffects.admin.open::%uuid of {_p}%} to true
+    open {_gui} to {_p}
+
+command /armoreffectadmin:
+    permission: op
+    permission message: &cOnly operators can use this.
+    trigger:
+        aeOpenAdmin(player)
+
+command /armoreffect [<text>] [<text>] [<integer>] [<integer>]:
+    permission: op
+    permission message: &cOnly operators can use this.
+    trigger:
+        if arg-1 is "gui":
+            aeOpenAdmin(player)
+            stop
+        if arg-1 is "set":
+            if arg-2 is not set:
+                send "{@ae-prefix}&cUsage: /armoreffect set <potion> <seconds> <level>"
+                stop
+            if arg-3 is not set:
+                send "{@ae-prefix}&cUsage: /armoreffect set <potion> <seconds> <level>"
+                stop
+            if arg-4 is not set:
+                send "{@ae-prefix}&cUsage: /armoreffect set <potion> <seconds> <level>"
+                stop
+            set {_test} to arg-2 parsed as potion effect type
+            if {_test} is not set:
+                send "{@ae-prefix}&cUnknown potion effect. Try speed, strength, haste, jump boost, etc."
+                stop
+            if arg-3 < 1:
+                send "{@ae-prefix}&cDuration must be at least 1 second."
+                stop
+            if arg-3 > 86400:
+                send "{@ae-prefix}&cDuration cannot exceed 86400 seconds."
+                stop
+            if arg-4 < 1:
+                send "{@ae-prefix}&cLevel must be 1 or higher."
+                stop
+            if arg-4 > 10:
+                send "{@ae-prefix}&cLevel cannot exceed 10."
+                stop
+            set {armoreffects.type} to arg-2
+            set {armoreffects.duration} to arg-3
+            set {armoreffects.level} to arg-4
+            send "{@ae-prefix}&aSet &f%arg-2% &alevel &f%arg-4% &afor &f%arg-3% seconds."
+            stop
+        if arg-1 is "clear":
+            delete {armoreffects.item}
+            delete {armoreffects.type}
+            delete {armoreffects.duration}
+            delete {armoreffects.level}
+            send "{@ae-prefix}&aArmor item and effect settings cleared."
+            stop
+        if arg-1 is "info":
+            if {armoreffects.item} is set:
+                send "{@ae-prefix}&7Armor item: &aset"
+            else:
+                send "{@ae-prefix}&7Armor item: &cnot set"
+            if {armoreffects.type} is set:
+                send "{@ae-prefix}&7Effect: &f%{armoreffects.type}% &7level &f%{armoreffects.level}% &7for &f%{armoreffects.duration}%s"
+            else:
+                send "{@ae-prefix}&7Effect: &cnot set"
+            stop
+        send "{@ae-prefix}&f/armoreffectadmin &7- choose the armor item"
+        send "{@ae-prefix}&f/armoreffect set <potion> <seconds> <level>"
+        send "{@ae-prefix}&f/armoreffect info &7or &f/armoreffect clear"
+
+on inventory click:
+    if {armoreffects.admin.open::%uuid of player%} is not true:
+        stop
+    if name of event-inventory is not "{@ae-title}":
+        stop
+    if raw slot is greater than 26:
+        stop
+    cancel event
+    if raw slot is 13:
+        if clicked inventory is player's inventory:
+            stop
+        if cursor slot is air:
+            stop
+        set {_sample} to cursor slot
+        set item amount of {_sample} to 1
+        set slot 13 of event-inventory to {_sample}
+        set cursor slot to air
+        stop
+    if raw slot is 22:
+        close player's inventory
+
+on inventory drag:
+    if {armoreffects.admin.open::%uuid of player%} is true:
+        if name of event-inventory is "{@ae-title}":
+            cancel event
+
+on inventory close:
+    if {armoreffects.admin.open::%uuid of player%} is not true:
+        stop
+    if name of event-inventory is not "{@ae-title}":
+        stop
+    if slot 13 of event-inventory is air:
+        delete {armoreffects.item}
+        send "{@ae-prefix}&eArmor item cleared." to player
+    else:
+        set {_saved} to slot 13 of event-inventory
+        set item amount of {_saved} to 1
+        set {armoreffects.item} to {_saved}
+        send "{@ae-prefix}&aArmor item saved. Wear it in any armor slot to receive the effect." to player
+    delete {armoreffects.admin.open::%uuid of player%}
+
+every 1 second:
+    if {armoreffects.item} is not set:
+        stop
+    if {armoreffects.type} is not set:
+        stop
+    set {_type} to {armoreffects.type} parsed as potion effect type
+    if {_type} is not set:
+        stop
+    loop all players:
+        set {_wearing} to false
+        if aeItemMatches(helmet of loop-player) is true:
+            set {_wearing} to true
+        if aeItemMatches(chestplate of loop-player) is true:
+            set {_wearing} to true
+        if aeItemMatches(leggings of loop-player) is true:
+            set {_wearing} to true
+        if aeItemMatches(boots of loop-player) is true:
+            set {_wearing} to true
+        if {_wearing} is true:
+            set {_effect} to potion effect of {_type} of tier {armoreffects.level} for {armoreffects.duration} seconds
+            add {_effect} to potion effects of loop-player
+            set {armoreffects.applied::%uuid of loop-player%} to true
+        else:
+            if {armoreffects.applied::%uuid of loop-player%} is true:
+                remove {_type} from loop-player
+                delete {armoreffects.applied::%uuid of loop-player%}
+
+on quit:
+    delete {armoreffects.applied::%uuid of player%}
