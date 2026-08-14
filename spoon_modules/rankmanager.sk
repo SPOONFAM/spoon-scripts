@@ -108,7 +108,17 @@ on inventory click:
     if {_rawSlot} > 26:
         stop
 
-    if {_rawSlot} is 10 or {_rawSlot} is 12 or {_rawSlot} is 14 or {_rawSlot} is 16:
+    set {_editable} to false
+    if {_rawSlot} is 10:
+        set {_editable} to true
+    if {_rawSlot} is 12:
+        set {_editable} to true
+    if {_rawSlot} is 14:
+        set {_editable} to true
+    if {_rawSlot} is 16:
+        set {_editable} to true
+
+    if {_editable} is true:
         if inventory action is move to other inventory:
             cancel event
             send action bar "&cUse normal clicks to place voucher items." to player
