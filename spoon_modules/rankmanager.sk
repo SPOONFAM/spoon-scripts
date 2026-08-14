@@ -1,0 +1,173 @@
+# rankmanager.sk
+# Operator-configured rank vouchers for LuckPerms.
+#
+# Supported ranks:
+#   bloodlust, vip, mvp, OG
+#
+# Operators run /rankadmin, place one exact sample item in each rank slot,
+# and close the menu. Empty slots disable that rank voucher. Players redeem a
+# configured voucher by right-clicking it; one item is consumed and LuckPerms
+# receives: /lp user <player> parent set <rank>
+
+options:
+    rm-prefix: &8[&dRanks&8] &r
+    rm-title: &8Rank Voucher Admin
+
+
+# Returns the configured rank for an exact item, ignoring only stack amount.
+function rmRankForItem(i: item) returns text:
+    if {_i} is air:
+        return ""
+
+    set {_candidate} to {_i}
+    set item amount of {_candidate} to 1
+
+    if {rankmanager.item::bloodlust} is set:
+        if {_candidate} is {rankmanager.item::bloodlust}:
+            return "bloodlust"
+    if {rankmanager.item::vip} is set:
+        if {_candidate} is {rankmanager.item::vip}:
+            return "vip"
+    if {rankmanager.item::mvp} is set:
+        if {_candidate} is {rankmanager.item::mvp}:
+            return "mvp"
+    if {rankmanager.item::OG} is set:
+        if {_candidate} is {rankmanager.item::OG}:
+            return "OG"
+    return ""
+
+
+function rmSaveGui(p: player, inv: inventory):
+    set {_rankNames::*} to "bloodlust", "vip", "mvp" and "OG"
+    set {_rankSlots::*} to 10, 12, 14 and 16
+    loop {_rankNames::*}:
+        set {_rank} to loop-value
+        set {_slot} to {_rankSlots::%loop-index%}
+        if slot {_slot} of {_inv} is air:
+            delete {rankmanager.item::%{_rank}%}
+        else:
+            set {_sample} to slot {_slot} of {_inv}
+            set {_amount} to item amount of {_sample}
+            set item amount of {_sample} to 1
+            set {rankmanager.item::%{_rank}%} to {_sample}
+            if {_amount} > 1:
+                set {_extra} to {_amount} - 1
+                give {_extra} of {_sample} to {_p}
+
+    send "{@rm-prefix}&aRank voucher items saved." to {_p}
+
+
+function rmOpenAdmin(p: player):
+    set {_gui} to a chest inventory with 3 rows named "{@rm-title}"
+    set {_filler} to gray stained glass pane named " "
+    loop 27 times:
+        set slot (loop-number - 1) of {_gui} to {_filler}
+
+    set slot 1 of {_gui} to redstone named "&c&lBLOODLUST" with lore "&7Place the Bloodlust voucher" and "&7in the empty slot below." and "&7LuckPerms group: bloodlust"
+    set slot 3 of {_gui} to emerald named "&a&lVIP" with lore "&7Place the VIP voucher" and "&7in the empty slot below." and "&7LuckPerms group: vip"
+    set slot 5 of {_gui} to diamond named "&b&lMVP" with lore "&7Place the MVP voucher" and "&7in the empty slot below." and "&7LuckPerms group: mvp"
+    set slot 7 of {_gui} to nether star named "&6&lOG" with lore "&7Place the OG voucher" and "&7in the empty slot below." and "&7LuckPerms group: OG"
+
+    clear slot 10 of {_gui}
+    clear slot 12 of {_gui}
+    clear slot 14 of {_gui}
+    clear slot 16 of {_gui}
+    if {rankmanager.item::bloodlust} is set:
+        set slot 10 of {_gui} to {rankmanager.item::bloodlust}
+    if {rankmanager.item::vip} is set:
+        set slot 12 of {_gui} to {rankmanager.item::vip}
+    if {rankmanager.item::mvp} is set:
+        set slot 14 of {_gui} to {rankmanager.item::mvp}
+    if {rankmanager.item::OG} is set:
+        set slot 16 of {_gui} to {rankmanager.item::OG}
+
+    set slot 18 of {_gui} to book named "&eHow to use" with lore "&7Place one item under each rank." and "&7Close the menu to save." and "&7Leave a slot empty to disable it." and "&7Players right-click to redeem."
+    set slot 22 of {_gui} to lime dye named "&a&lSAVE & CLOSE" with lore "&7Click to save and close."
+    set {rankmanager.admin.open::%uuid of {_p}%} to true
+    open {_gui} to {_p}
+
+
+command /rankadmin:
+    description: Configure rank voucher items
+    executable by: players
+    trigger:
+        if player is not an operator:
+            send "{@rm-prefix}&cOnly server operators can use this command." to player
+            stop
+        rmOpenAdmin(player)
+        send "{@rm-prefix}&7Place one exact item under each rank, then click Save." to player
+
+
+on inventory click:
+    if {rankmanager.admin.open::%uuid of player%} is not true:
+        stop
+    if name of player's current inventory is not "{@rm-title}":
+        stop
+
+    set {_rawSlot} to raw index of event-slot
+    if {_rawSlot} > 26:
+        stop
+
+    if {_rawSlot} is 10 or {_rawSlot} is 12 or {_rawSlot} is 14 or {_rawSlot} is 16:
+        if inventory action is move to other inventory:
+            cancel event
+            send action bar "&cUse normal clicks to place voucher items." to player
+        stop
+
+    cancel event
+    if {_rawSlot} is 22:
+        close player's inventory
+        stop
+
+    send action bar "&cOnly the four rank slots can be edited." to player
+
+
+on inventory drag:
+    if {rankmanager.admin.open::%uuid of player%} is true:
+        if name of player's current inventory is "{@rm-title}":
+            cancel event
+            send action bar "&cUse normal clicks to place voucher items." to player
+
+
+on inventory close:
+    if {rankmanager.admin.open::%uuid of player%} is not true:
+        stop
+    if name of event-inventory is not "{@rm-title}":
+        stop
+
+    delete {rankmanager.admin.open::%uuid of player%}
+    rmSaveGui(player, event-inventory)
+
+
+# Redeem one item from any stack that exactly matches a configured voucher.
+on right click:
+    if player's tool is air:
+        stop
+    if {rankmanager.redeem.cooldown::%uuid of player%} is set:
+        stop
+
+    set {_rank} to rmRankForItem(player's tool)
+    if {_rank} is "":
+        stop
+
+    cancel event
+    set {rankmanager.redeem.cooldown::%uuid of player%} to true
+
+    set {_held} to player's tool
+    set {_amount} to item amount of {_held}
+    if {_amount} <= 1:
+        set player's tool to air
+    else:
+        remove 1 from {_amount}
+        set item amount of {_held} to {_amount}
+        set player's tool to {_held}
+
+    execute console command "lp user %name of player% parent set %{_rank}%"
+    send "{@rm-prefix}&aRank voucher redeemed! You received the &f%{_rank}% &arank." to player
+    play sound "entity.player.levelup" with volume 1 and pitch 1.3 to player
+    wait 2 ticks
+    delete {rankmanager.redeem.cooldown::%uuid of player%}
+
+
+on load:
+    send "[RankManager] Loaded rank vouchers: bloodlust, vip, mvp, OG" to console
