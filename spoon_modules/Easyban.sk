@@ -1,53 +1,175 @@
 # ============================================================
 # Easyban.sk
-# Simple temporary bans for server operators.
+# Standalone temporary ban system - NO EssentialsX required
 #
 # Usage:
 #   /eban <player> <reason> <time>
 #
 # Examples:
-#   /eban Steve griefing 15m
-#   /eban Alex spam 1h
-#   /eban Notch exploiting 24h
-#   /eban Player cheating 1d
-#   /eban Player trolling 1w
+#   /eban Steve Griefing 15m
+#   /eban Steve Spamming chat 1h
+#   /eban Steve Cheating after warning 24h
+#   /eban Steve Exploiting 1d
+#   /eban Steve Trolling 1w
 #
-# Time formats:
+# Time:
 #   m = minutes
 #   h = hours
 #   d = days
 #   w = weeks
 #
-# Requires EssentialsX (uses its /tempban command).
+# Extra:
+#   /eunban <player>
+#   /ebaninfo <player>
 # ============================================================
 
-command /eban <offlineplayer> <text> <text>:
-    usage: &cUsage: /eban <player> <reason> <time> &7Example: /eban Steve griefing 15m
+command /eban <offlineplayer> <text>:
+    usage: &cUsage: /eban <player> <reason> <time>
     trigger:
-        # Only server operators can use EasyBan.
         if player is not op:
             send "&cYou must be a server operator to use /eban."
             stop
 
         set {_target} to arg-1
-        set {_reason} to arg-2
-        set {_time} to arg-3
+        set {_input} to arg-2
 
-        # Valid examples: 1m, 15m, 1h, 24h, 1d, 1w
-        if {_time} does not match regex "^[0-9]+[mhdw]$":
-            send "&cInvalid time."
-            send "&7Use formats such as &f15m&7, &f1h&7, &f24h&7, &f1d&7, or &f1w&7."
+        set {_parts::*} to split {_input} at " "
+
+        if size of {_parts::*} < 2:
+            send "&cUsage: /eban <player> <reason> <time>"
+            send "&7Example: &f/eban Steve Griefing 15m"
             stop
 
-        # Prevent a zero-length ban.
-        if {_time} matches regex "^0+[mhdw]$":
-            send "&cThe ban time must be greater than 0."
+        set {_last} to size of {_parts::*}
+        set {_timeText} to {_parts::%{_last}%}
+        delete {_parts::%{_last}%}
+
+        set {_reason} to join {_parts::*} with " "
+
+        if {_reason} is "":
+            send "&cYou must provide a reason."
             stop
 
-        # EssentialsX syntax:
-        # /tempban <player> <time> <reason>
-        execute console command "tempban %{_target}% %{_time}% %{_reason}%"
+        # Get final letter of the time value.
+        set {_unit} to last character of {_timeText}
 
-        broadcast "&8[&cEasyBan&8] &f%player% &7temporarily banned &f%{_target}%&7."
+        # Only allow m / h / d / w.
+        if {_unit} is not "m" and {_unit} is not "h" and {_unit} is not "d" and {_unit} is not "w":
+            send "&cInvalid ban time: &f%{_timeText}%"
+            send "&7Use &f15m&7, &f1h&7, &f24h&7, &f1d&7, or &f1w&7."
+            stop
+
+        # Remove the suffix to get the numeric amount.
+        set {_numberText} to {_timeText}
+        replace all "m" with "" in {_numberText}
+        replace all "h" with "" in {_numberText}
+        replace all "d" with "" in {_numberText}
+        replace all "w" with "" in {_numberText}
+
+        set {_amount} to {_numberText} parsed as integer
+
+        if {_amount} is not set:
+            send "&cInvalid ban time: &f%{_timeText}%"
+            send "&7The amount before the letter must be a number."
+            stop
+
+        if {_amount} <= 0:
+            send "&cBan time must be greater than 0."
+            stop
+
+        if {_unit} is "m":
+            set {_duration} to {_amount} minutes
+        else if {_unit} is "h":
+            set {_duration} to {_amount} hours
+        else if {_unit} is "d":
+            set {_duration} to {_amount} days
+        else if {_unit} is "w":
+            set {_duration} to {_amount} weeks
+
+        set {_id} to uuid of {_target}
+
+        set {easyban::%{_id}%::name} to name of {_target}
+        set {easyban::%{_id}%::reason} to {_reason}
+        set {easyban::%{_id}%::staff} to name of player
+        set {easyban::%{_id}%::created} to now
+
+        set {_expires} to now
+        add {_duration} to {_expires}
+        set {easyban::%{_id}%::expires} to {_expires}
+
+        if {_target} is online:
+            kick {_target} due to "&c&lYou are temporarily banned!%nl%%nl%&7Reason: &f%{_reason}%%nl%&7Duration: &f%{_timeText}%%nl%&7Expires: &f%{_expires}%%nl%%nl%&8BoxRfinite EasyBan"
+
+        send "&aSuccessfully banned &f%{_target}% &afor &f%{_timeText}%&a."
+        send "&7Reason: &f%{_reason}%"
+
+        broadcast "&8[&cEasyBan&8] &f%player% &7banned &f%{_target}% &7for &f%{_timeText}%&7."
         broadcast "&8» &7Reason: &f%{_reason}%"
-        broadcast "&8» &7Time: &f%{_time}%"
+
+
+on login:
+    set {_id} to uuid of player
+
+    if {easyban::%{_id}%::expires} is set:
+        set {_expires} to {easyban::%{_id}%::expires}
+
+        if now is after {_expires}:
+            delete {easyban::%{_id}%::*}
+            stop
+
+        set {_reason} to {easyban::%{_id}%::reason}
+        set {_staff} to {easyban::%{_id}%::staff}
+        set {_remaining} to difference between {_expires} and now
+
+        disallow login due to "&c&lYou are temporarily banned!%nl%%nl%&7Reason: &f%{_reason}%%nl%&7Banned by: &f%{_staff}%%nl%&7Time remaining: &f%{_remaining}%%nl%&7Expires: &f%{_expires}%%nl%%nl%&8BoxRfinite EasyBan"
+
+
+command /eunban <offlineplayer>:
+    usage: &cUsage: /eunban <player>
+    trigger:
+        if player is not op:
+            send "&cYou must be a server operator to use /eunban."
+            stop
+
+        set {_id} to uuid of arg-1
+
+        if {easyban::%{_id}%::expires} is not set:
+            send "&e%arg-1% is not banned by EasyBan."
+            stop
+
+        delete {easyban::%{_id}%::*}
+
+        send "&aUnbanned &f%arg-1%&a."
+        broadcast "&8[&aEasyBan&8] &f%player% &7unbanned &f%arg-1%&7."
+
+
+command /ebaninfo <offlineplayer>:
+    usage: &cUsage: /ebaninfo <player>
+    trigger:
+        if player is not op:
+            send "&cYou must be a server operator to use /ebaninfo."
+            stop
+
+        set {_id} to uuid of arg-1
+
+        if {easyban::%{_id}%::expires} is not set:
+            send "&a%arg-1% is not currently banned by EasyBan."
+            stop
+
+        set {_expires} to {easyban::%{_id}%::expires}
+
+        if now is after {_expires}:
+            delete {easyban::%{_id}%::*}
+            send "&a%arg-1%'s EasyBan has already expired."
+            stop
+
+        set {_remaining} to difference between {_expires} and now
+
+        send "&8&m--------------------------------"
+        send "&c&lEasyBan Info"
+        send "&7Player: &f%arg-1%"
+        send "&7Reason: &f%{easyban::%{_id}%::reason}%"
+        send "&7Banned by: &f%{easyban::%{_id}%::staff}%"
+        send "&7Expires: &f%{_expires}%"
+        send "&7Remaining: &f%{_remaining}%"
+        send "&8&m--------------------------------"
