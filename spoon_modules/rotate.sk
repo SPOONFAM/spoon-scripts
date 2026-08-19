@@ -1,0 +1,31 @@
+# ============================================
+# BoxRfinite Rotating Boss Bar
+# ============================================
+
+on load:
+    set {boxrfinite.bar} to boss bar with id "boxrfinite:info" with title "&6&lBoxRfinite" with color yellow with progress 100
+
+every 5 seconds:
+    add 1 to {boxrfinite.message}
+
+    if {boxrfinite.message} > 3:
+        set {boxrfinite.message} to 1
+
+    if {boxrfinite.message} = 1:
+        set title of {boxrfinite.bar} to "&6&lBoxRfinite"
+
+    else if {boxrfinite.message} = 2:
+        set title of {boxrfinite.bar} to "&bJoin our Discord: &fdiscord.gg/8UJ8uvZ2jQ"
+
+    else if {boxrfinite.message} = 3:
+        set title of {boxrfinite.bar} to "&eWelcome to &6&lBoxRfinite&e!"
+
+    loop all players:
+        add loop-player to viewers of {boxrfinite.bar}
+
+on join:
+    wait 1 second
+    add player to viewers of {boxrfinite.bar}
+
+on quit:
+    remove player from viewers of {boxrfinite.bar}
