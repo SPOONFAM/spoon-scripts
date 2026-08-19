@@ -1,0 +1,53 @@
+# ============================================================
+# Easyban.sk
+# Simple temporary bans for server operators.
+#
+# Usage:
+#   /eban <player> <reason> <time>
+#
+# Examples:
+#   /eban Steve griefing 15m
+#   /eban Alex spam 1h
+#   /eban Notch exploiting 24h
+#   /eban Player cheating 1d
+#   /eban Player trolling 1w
+#
+# Time formats:
+#   m = minutes
+#   h = hours
+#   d = days
+#   w = weeks
+#
+# Requires EssentialsX (uses its /tempban command).
+# ============================================================
+
+command /eban <offlineplayer> <text> <text>:
+    usage: &cUsage: /eban <player> <reason> <time> &7Example: /eban Steve griefing 15m
+    trigger:
+        # Only server operators can use EasyBan.
+        if player is not op:
+            send "&cYou must be a server operator to use /eban."
+            stop
+
+        set {_target} to arg-1
+        set {_reason} to arg-2
+        set {_time} to arg-3
+
+        # Valid examples: 1m, 15m, 1h, 24h, 1d, 1w
+        if {_time} does not match regex "^[0-9]+[mhdw]$":
+            send "&cInvalid time."
+            send "&7Use formats such as &f15m&7, &f1h&7, &f24h&7, &f1d&7, or &f1w&7."
+            stop
+
+        # Prevent a zero-length ban.
+        if {_time} matches regex "^0+[mhdw]$":
+            send "&cThe ban time must be greater than 0."
+            stop
+
+        # EssentialsX syntax:
+        # /tempban <player> <time> <reason>
+        execute console command "tempban %{_target}% %{_time}% %{_reason}%"
+
+        broadcast "&8[&cEasyBan&8] &f%player% &7temporarily banned &f%{_target}%&7."
+        broadcast "&8» &7Reason: &f%{_reason}%"
+        broadcast "&8» &7Time: &f%{_time}%"
