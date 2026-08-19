@@ -1,0 +1,79 @@
+# ============================================================
+# BoxRfinite Scoreboard
+#
+# Requires:
+#   - Skript
+#   - SkBee
+#   - PlaceholderAPI
+#   - skript-placeholders
+#   - LuckPerms
+#
+# Staff counting:
+# Give every staff rank the permission:
+#   boxrfinite.staff
+# ============================================================
+
+on join:
+    if {boxstats::%uuid of player%::kills} is not set:
+        set {boxstats::%uuid of player%::kills} to 0
+
+    if {boxstats::%uuid of player%::deaths} is not set:
+        set {boxstats::%uuid of player%::deaths} to 0
+
+    wait 10 ticks
+    toggle fastboard of player to on
+
+on death of player:
+    add 1 to {boxstats::%uuid of player%::deaths}
+
+    if attacker is a player:
+        add 1 to {boxstats::%uuid of attacker%::kills}
+
+every 2 seconds:
+    loop all players:
+        set {_staff} to 0
+
+        loop all players:
+            if loop-player-2 has permission "boxrfinite.staff":
+                add 1 to {_staff}
+
+        set {_rank} to placeholder "luckperms_prefix" from loop-player
+
+        if {_rank} is "":
+            set {_rank} to "&7Player"
+
+        set {_kills} to {boxstats::%uuid of loop-player%::kills}
+        set {_deaths} to {boxstats::%uuid of loop-player%::deaths}
+
+        if {_kills} is not set:
+            set {_kills} to 0
+
+        if {_deaths} is not set:
+            set {_deaths} to 0
+
+        toggle fastboard of loop-player to on
+
+        set title of loop-player's fastboard to "&6&lʙᴏxʀғɪɴɪᴛᴇ"
+
+        set line 10 of loop-player's fastboard to "&8&m--------------------"
+        set line 9 of loop-player's fastboard to "&fᴘʟᴀʏᴇʀ"
+        set line 8 of loop-player's fastboard to "&7Rank: %{_rank}%"
+        set line 7 of loop-player's fastboard to "&7Kills: &a%{_kills}%"
+        set line 6 of loop-player's fastboard to "&7Deaths: &c%{_deaths}%"
+        set line 5 of loop-player's fastboard to " "
+        set line 4 of loop-player's fastboard to "&fѕᴇʀᴠᴇʀ"
+        set line 3 of loop-player's fastboard to "&7Players: &e%size of all players%"
+        set line 2 of loop-player's fastboard to "&7Staff: &b%{_staff}%"
+        set line 1 of loop-player's fastboard to "&8&m--------------------"
+
+command /resetkills <offlineplayer>:
+    permission: op
+    trigger:
+        set {boxstats::%uuid of arg-1%::kills} to 0
+        send "&aReset &f%arg-1%&a's kills."
+
+command /resetdeaths <offlineplayer>:
+    permission: op
+    trigger:
+        set {boxstats::%uuid of arg-1%::deaths} to 0
+        send "&aReset &f%arg-1%&a's deaths."
