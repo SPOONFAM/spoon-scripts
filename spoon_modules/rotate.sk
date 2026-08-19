@@ -1,31 +1,49 @@
-# ============================================
+# ==========================================================
 # BoxRfinite Rotating Boss Bar
-# ============================================
+# No Skript bossbar addon required
+# ==========================================================
 
 on load:
-    set {boxrfinite.bar} to boss bar with id "boxrfinite:info" with title "&6&lBoxRfinite" with color yellow with progress 100
+    # Remove old bar if it already exists
+    execute console command "bossbar remove boxrfinite:info"
+
+    wait 2 ticks
+
+    # Create boss bar
+    execute console command "bossbar add boxrfinite:info {""text"":""BoxRfinite"",""color"":""gold"",""bold"":true}"
+    execute console command "bossbar set boxrfinite:info color yellow"
+    execute console command "bossbar set boxrfinite:info style progress"
+    execute console command "bossbar set boxrfinite:info max 100"
+    execute console command "bossbar set boxrfinite:info value 100"
+    execute console command "bossbar set boxrfinite:info visible true"
+    execute console command "bossbar set boxrfinite:info players @a"
+
+    set {boxrfinite.rotation} to 1
+
 
 every 5 seconds:
-    add 1 to {boxrfinite.message}
+    add 1 to {boxrfinite.rotation}
 
-    if {boxrfinite.message} > 3:
-        set {boxrfinite.message} to 1
+    if {boxrfinite.rotation} > 3:
+        set {boxrfinite.rotation} to 1
 
-    if {boxrfinite.message} = 1:
-        set title of {boxrfinite.bar} to "&6&lBoxRfinite"
+    if {boxrfinite.rotation} = 1:
+        execute console command "bossbar set boxrfinite:info name {""text"":""BoxRfinite"",""color"":""gold"",""bold"":true}"
 
-    else if {boxrfinite.message} = 2:
-        set title of {boxrfinite.bar} to "&bJoin our Discord: &fdiscord.gg/8UJ8uvZ2jQ"
+    else if {boxrfinite.rotation} = 2:
+        execute console command "bossbar set boxrfinite:info name {""text"":""Join our Discord: discord.gg/8UJ8uvZ2jQ"",""color"":""aqua""}"
 
-    else if {boxrfinite.message} = 3:
-        set title of {boxrfinite.bar} to "&eWelcome to &6&lBoxRfinite&e!"
+    else if {boxrfinite.rotation} = 3:
+        execute console command "bossbar set boxrfinite:info name {""text"":""Welcome to BoxRfinite!"",""color"":""yellow""}"
 
-    loop all players:
-        add loop-player to viewers of {boxrfinite.bar}
+    execute console command "bossbar set boxrfinite:info players @a"
+
 
 on join:
     wait 1 second
-    add player to viewers of {boxrfinite.bar}
+    execute console command "bossbar set boxrfinite:info players @a"
+
 
 on quit:
-    remove player from viewers of {boxrfinite.bar}
+    wait 1 tick
+    execute console command "bossbar set boxrfinite:info players @a"
